@@ -1,0 +1,85 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for more information:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+#
+# This repository has two things worth watching, and they are watched
+# differently. The workflow's actions are followed by major tags that move on
+# their own anyway, so their minor and patch updates are grouped and merged
+# without review by .github/workflows/dependabot-auto-merge.yml. The Dockerfile's
+# base image is a single FROM line, and the only update Dependabot can ever
+# propose for it is a major one, which is exactly the kind that wants a human.
+#
+# What is deliberately NOT watched is written at the bottom of this file, so that
+# an absence reads as a decision rather than as an oversight.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    # Daily rather than weekly : minor and patch updates are grouped and
+    # auto-merged, so checking every day shortens the delay before a fix lands
+    # without adding review work. Major updates are opened sooner too, they
+    # still wait for a manual review
+    schedule:
+      interval: "daily"
+    # Opening a pull request is the only way Dependabot reports anything, and it
+    # stops opening them once this many are waiting - silently, naming nothing.
+    # The default is 5, and it is reached more easily than it looks : majors come
+    # one pull request each and sit there until somebody reviews them, so a few
+    # untouched majors are enough to hide every update that follows.
+    # 99, not 0 : zero does not mean "no limit", it disables version updates
+    # altogether and leaves only security ones. A large value is what the
+    # documentation gives as the way to effectively remove the limit
+    open-pull-requests-limit: 99
+    groups:
+      # Minor and patch updates are grouped into a single PR,
+      # auto-merged by the dependabot-auto-merge workflow.
+      # Major updates stay out of the group: one separate PR each,
+      # waiting for manual review (potentially breaking changes).
+      github-actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  # The Dockerfile's "FROM node:24-slim", and the reason this file exists at all:
+  # it is the one dependency of this repository that reaches users, since the
+  # image built from it is what they run.
+  - package-ecosystem: "docker"
+    directory: "/"
+    # Daily, like above. A base image is also how a CVE in the runtime reaches
+    # the published image, and a day is the shortest useful interval Dependabot
+    # offers for hearing about it
+    schedule:
+      interval: "daily"
+    # The limit is counted per entry, not shared with the one above, so it has to
+    # be raised here too for the same reason it was raised there
+    open-pull-requests-limit: 99
+    # No group and no auto-merge here, on purpose.
+    #
+    # "24-slim" is a floating major tag : Node's own patch releases land on it
+    # without the text of the Dockerfile changing, which is why the Dockerfile
+    # stays on the tag rather than pinning a digest. The consequence is that the
+    # only update Dependabot can ever raise for this line is "25-slim" - a major
+    # one. There is no minor or patch stream to group, and nothing to hand to a
+    # workflow that merges without review : a new Node major under the CLI that
+    # ships to users is a decision, taken once a year, not a chore.
+
+# Not watched : npm.
+#
+# The image does install "@anthropic-ai/claude-code", but no package.json, no
+# lockfile, no manifest of any kind in this repository names it or its version.
+# The Dockerfile takes the version as a build argument (CLAUDE_CODE_VERSION, with
+# no default, and the build fails if it is empty), and
+# .github/workflows/build-and-publish.yml resolves it at run time by asking the
+# npm registry what the followed dist-tag currently points at.
+#
+# So there is nothing here for Dependabot to read and nothing for it to bump : an
+# "npm" entry would scan the repository, find no manifest, and never open a
+# single pull request. The update mechanism for that dependency already exists
+# and is the weekly workflow run, which rebuilds and republishes only when the
+# resolved version differs from what is already on the registry.
+#
+# Not watched either : devcontainers. This repository has no .devcontainer/
+# directory. Add the ecosystem the day it gains one.
