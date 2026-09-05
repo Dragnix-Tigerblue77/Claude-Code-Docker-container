@@ -70,6 +70,20 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
+- **Every commit carries a `Signed-off-by`, and it never names the agent.**
+  `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
+  pull request. It is not a formality here: the project is dual-licensed, and the
+  trailer is the record that a contribution could be offered under both arms, which
+  is what keeps the commercial one grantable. A session authors its commits under
+  the agent — in the author field or in a `Co-Authored-By` trailer, which is where
+  `git log`, `git blame` and the contributor graph read who wrote the work — and
+  signs off as the maintainer, whose act of reviewing and merging is the
+  certification. `git commit -s` derives the trailer from the author, so on a commit
+  the agent authored it writes the one shape the check refuses; pass it explicitly:
+
+  ```bash
+  git commit --trailer "Signed-off-by: Tigerblue77 <37409593+tigerblue77@users.noreply.github.com>"
+  ```
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
   here fails at the API call, after the work is done.
