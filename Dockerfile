@@ -29,8 +29,15 @@ RUN apt-get update \
       ripgrep \
  && rm -rf /var/lib/apt/lists/*
 
+# --allow-scripts names this one package on purpose. npm 11 refuses lifecycle
+# scripts by default, and without it the install SUCCEEDS while quietly skipping
+# the package's own postinstall (node install.cjs) -- "claude --version" still
+# answers, so nothing looks wrong until something much later does. Naming a
+# single package keeps scripts refused for everything else, including anything
+# that arrives later as a transitive dependency.
 RUN test -n "${CLAUDE_CODE_VERSION}" \
- && npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+ && npm install -g --allow-scripts=@anthropic-ai/claude-code \
+      "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
  && npm cache clean --force
 
 # The image is rebuilt whenever a new version is published, so the CLI must never
