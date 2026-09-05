@@ -5,7 +5,7 @@
 # Pinning this base by digest would make the build fully reproducible. It is left
 # on the tag for now so that base-image security updates arrive on their own; if
 # reproducibility ever matters more than that, pin it here.
-FROM node:24-slim
+FROM node:26-slim
 
 # The exact version to install, supplied by the workflow. Never left unpinned:
 # an image whose content depends on the day it was built cannot be reproduced,
