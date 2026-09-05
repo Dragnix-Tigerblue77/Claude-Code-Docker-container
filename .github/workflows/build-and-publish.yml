@@ -5,6 +5,19 @@ name: Build and publish
 
 # Three ways in, and only two of them ever touch the registry.
 #
+# TWO THINGS make the published image stale, and the schedule below exists for
+# both. A new Claude Code release is the obvious one. The other is the base: FROM
+# names a floating tag, so Debian's and Node's security fixes land on
+# node:24-slim without a line of this repository changing, and an image built
+# before them keeps shipping what they fixed. Rebuilding only when the npm
+# version moves would leave that entirely to the CLI's release cadence -- quiet
+# fortnight, fortnight-old base -- which is not a property anybody chose.
+#
+# So the run compares two things against what is published and rebuilds if
+# either moved. It can tell, because the publishing build records the version
+# and the base digest on the image as OCI labels ; that is the whole reason they
+# are written.
+#
 # On a pull request the job resolves the version, builds and runs the image, then
 # stops: no login, no push. Without that, nothing in this repository would check
 # its two real files before they reach the default branch, and the first evidence
@@ -21,9 +34,16 @@ name: Build and publish
 # today's still builds is worth something on its own.
 on:
   schedule:
-    # Monday, 05:17 UTC. An odd minute rather than :00, where every cron on
+    # Daily at 05:17 UTC, an odd minute rather than :00 where every cron on
     # GitHub queues at once and scheduled runs get delayed.
-    - cron: "17 5 * * 1"
+    #
+    # Issue #1 asked for a weekly run, and weekly was right while the only
+    # question was "has the CLI been released again". It is the wrong period for
+    # the base: seven days is how long the image would keep shipping a fixed
+    # vulnerability in the worst case, for no reason other than the calendar. A
+    # run with nothing to do is now two registry reads and no build, so the
+    # frequency costs a few seconds of a public repository's unmetered minutes.
+    - cron: "17 5 * * *"
   pull_request:
   workflow_dispatch:
     inputs:
@@ -32,7 +52,7 @@ on:
         required: false
         type: string
       force:
-        description: "Rebuild and republish even if the version tag already exists"
+        description: "Rebuild and republish even when nothing moved"
         required: false
         type: boolean
         default: false
@@ -85,47 +105,10 @@ jobs:
 
           echo "Following dist-tag '${DIST_TAG}', which resolves to ${version}."
 
-      - name: Log in to ghcr.io
-        if: github.event_name != 'pull_request'
-        run: |
-          set -euo pipefail
-          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
-            | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
-
-      - name: Decide whether there is anything to build
-        id: decide
-        env:
-          IMAGE: ${{ steps.resolve.outputs.image }}
-          VERSION: ${{ steps.resolve.outputs.version }}
-          FORCE: ${{ inputs.force }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-
-          # On a pull request the point IS to build, and querying the registry
-          # would need a login this run deliberately does not perform.
-          if [ "${EVENT}" = "pull_request" ]; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-            echo "Pull request: building to validate, without publishing."
-            exit 0
-          fi
-
-          if [ "${FORCE}" = "true" ]; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-            echo "Forced rebuild requested."
-            exit 0
-          fi
-
-          if docker manifest inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
-            echo "build=false" >> "$GITHUB_OUTPUT"
-            echo "${IMAGE}:${VERSION} is already published. Nothing to do."
-          else
-            echo "build=true" >> "$GITHUB_OUTPUT"
-            echo "${IMAGE}:${VERSION} is not published yet."
-          fi
-
+      # Both of these now run before the decision instead of after it: the
+      # decision is taken on the base digest, so it has to be resolved first,
+      # and resolving it needs the Dockerfile
       - name: Checkout
-        if: steps.decide.outputs.build == 'true'
         uses: actions/checkout@v5
 
       # The digest has to be resolved BEFORE the build, because a label is baked
@@ -154,7 +137,6 @@ jobs:
       # repairs itself the following day.
       - name: Pull the base image and record the digest it resolves to
         id: base
-        if: steps.decide.outputs.build == 'true'
         run: |
           set -euo pipefail
 
@@ -202,6 +184,105 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           echo "Base image ${name} currently resolves to ${digest}."
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
+
+      # The one place a wrong answer is expensive in both directions. Saying
+      # "nothing to do" when the base moved leaves a fixed vulnerability
+      # published ; saying "rebuild" when nothing moved republishes an identical
+      # image every night and makes the tag history useless for telling when
+      # something actually changed.
+      #
+      # Everything it needs is on the published image itself, read back from the
+      # moving tag: which version is on it, and which base digest it was built
+      # on. No state is kept anywhere else, so there is nothing to fall out of
+      # sync with reality.
+      - name: Decide whether there is anything to build
+        id: decide
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          FORCE: ${{ inputs.force }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          decided() {
+            {
+              echo "build=$1"
+              echo "push_version=$2"
+              echo "reason=$3"
+            } >> "$GITHUB_OUTPUT"
+            echo "$3"
+            exit 0
+          }
+
+          # On a pull request the point IS to build, and querying the registry
+          # would need a login this run deliberately does not perform
+          if [ "${EVENT}" = "pull_request" ]; then
+            decided true false "Pull request: building to validate, without publishing."
+          fi
+
+          if [ "${FORCE}" = "true" ]; then
+            decided true true "Forced rebuild requested."
+          fi
+
+          # Read the moving tag's config once and take both labels off it. The
+          # version tag is not the reference here: it is immutable by design, so
+          # it cannot say whether the CHANNEL is up to date, which is the
+          # question a refresh has to answer
+          errors="$RUNNER_TEMP/imagetools-error.txt"
+          if config="$(docker buildx imagetools inspect "${IMAGE}:${DIST_TAG}" --format '{{json .Image}}' 2>"$errors")"; then
+            label() {
+              printf '%s' "$config" \
+                | jq -r "if has(\"config\") then [.] else [.[]] end
+                         | map(.config.Labels[\"$1\"] // empty)
+                         | first // \"\""
+            }
+            published_version="$(label org.opencontainers.image.version)"
+            published_base="$(label org.opencontainers.image.base.digest)"
+          elif grep -qiE 'not found|manifest unknown|name unknown' "$errors"; then
+            # Nothing published under that tag yet, so there is nothing to
+            # compare against and everything to build
+            published_version=""
+            published_base=""
+          else
+            # Credentials, rate limit, registry outage: none of these is an
+            # answer to "did anything move ?", and guessing here is what would
+            # turn this job into an unconditional nightly republication, green
+            # run after green run, with nobody noticing
+            echo "::error::Could not read ${IMAGE}:${DIST_TAG}, giving up rather than assuming something moved" >&2
+            cat "$errors" >&2
+            exit 1
+          fi
+
+          if [ -z "$published_version" ]; then
+            # Either the tag does not exist, or it predates the labels. Both are
+            # answered by building once ; expected exactly once for the second,
+            # and twice in a row means the publishing step is not recording them
+            decided true true "Nothing readable is published under ${DIST_TAG} yet. Building."
+          fi
+
+          if [ "$published_version" != "$VERSION" ]; then
+            decided true true "Published ${DIST_TAG} is on ${published_version}, npm resolves to ${VERSION}. Building."
+          fi
+
+          if [ "$published_base" != "$BASE_DIGEST" ]; then
+            # The version tag is deliberately NOT republished here. It names an
+            # exact set of bytes somebody may have pinned, and moving it would
+            # take away the one thing a version tag is for -- rolling back to a
+            # known state. Only the moving tag moves, which is what it is for
+            decided true false "Same version ${VERSION}, but the base moved from ${published_base:-nothing recorded} to ${BASE_DIGEST}. Rebuilding ${DIST_TAG} only."
+          fi
+
+          decided false false "${IMAGE}:${DIST_TAG} is on ${VERSION} and on the current base. Nothing to do."
 
       # The labels are the OCI pre-defined annotation keys, and they are not
       # decoration. Three of them do work nothing else does:
@@ -330,9 +411,19 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          PUSH_VERSION: ${{ steps.decide.outputs.push_version }}
         run: |
           set -euo pipefail
-          docker push "${IMAGE}:${VERSION}"
+          # The moving tag always moves. The version tag is pushed only when it
+          # is a version that has not been published before: a rebuild caused by
+          # the base moving produces different bytes under the same version
+          # number, and overwriting the tag would silently replace what somebody
+          # pinned. Whoever wants the fixed base asks for the channel
+          if [ "${PUSH_VERSION}" = "true" ]; then
+            docker push "${IMAGE}:${VERSION}"
+          else
+            echo "Leaving ${IMAGE}:${VERSION} on the bytes it was published with."
+          fi
           docker push "${IMAGE}:${DIST_TAG}"
 
       - name: Summary
@@ -341,7 +432,11 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          BASE_NAME: ${{ steps.base.outputs.name }}
+          BASE_DIGEST: ${{ steps.base.outputs.digest }}
           BUILT: ${{ steps.decide.outputs.build }}
+          PUSH_VERSION: ${{ steps.decide.outputs.push_version }}
+          REASON: ${{ steps.decide.outputs.reason }}
           EVENT: ${{ github.event_name }}
         run: |
           {
@@ -351,11 +446,17 @@ jobs:
             echo "|---|---|"
             echo "| dist-tag followed | \`${DIST_TAG:-unresolved}\` |"
             echo "| version resolved | \`${VERSION:-unresolved}\` |"
+            echo "| base image | \`${BASE_NAME:-unresolved}\` |"
+            echo "| base digest | \`${BASE_DIGEST:-unresolved}\` |"
             if [ "${EVENT}" = "pull_request" ]; then
               echo "| result | built and ran, not published (pull request) |"
-            elif [ "${BUILT}" = "true" ]; then
+            elif [ "${BUILT}" = "true" ] && [ "${PUSH_VERSION}" = "true" ]; then
               echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${DIST_TAG}\` |"
+            elif [ "${BUILT}" = "true" ]; then
+              echo "| result | republished \`${IMAGE}:${DIST_TAG}\` on the current base, leaving \`${IMAGE}:${VERSION}\` untouched |"
             else
-              echo "| result | nothing to do, this version was already published |"
+              echo "| result | nothing to do |"
             fi
+            echo
+            echo "${REASON:-The run did not get as far as deciding.}"
           } >> "$GITHUB_STEP_SUMMARY"
