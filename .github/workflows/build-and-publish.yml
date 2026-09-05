@@ -1,13 +1,21 @@
 name: Build and publish
 
-# Weekly, plus on demand. The job is cheap when there is nothing to do: it asks
-# npm for a version, asks the registry whether that version is already published,
-# and stops there. Only a genuinely new version reaches the build step.
+# Three ways in, and only two of them ever touch the registry.
+#
+# On a pull request the job resolves the version, builds and runs the image, then
+# stops: no login, no push. Without that, nothing in this repository would check
+# its two real files before they reach the default branch, and the first evidence
+# that the Dockerfile builds would arrive on a Monday morning in a scheduled job
+# whose failure nobody is watching for.
 on:
   schedule:
     # Monday, 05:17 UTC. An odd minute rather than :00, where every cron on
     # GitHub queues at once and scheduled runs get delayed.
     - cron: "17 5 * * 1"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".github/workflows/build-and-publish.yml"
   workflow_dispatch:
     inputs:
       dist_tag:
@@ -24,15 +32,16 @@ permissions:
   contents: read
   packages: write
 
-# Never two publishes at once, and never cancel one in flight: a cancelled push
-# can leave a tag pointing at a partially uploaded manifest.
+# Publishing runs never cancel each other: a cancelled push can leave a tag
+# pointing at a partially uploaded manifest. Pull request runs are throwaway, so
+# a newer push supersedes an older one.
 concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   publish:
-    name: Publish the image if npm has a newer version
+    name: Build, verify, and publish when a new version appears
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -68,6 +77,7 @@ jobs:
           echo "Following dist-tag '${DIST_TAG}', which resolves to ${version}."
 
       - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
@@ -79,8 +89,17 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           FORCE: ${{ inputs.force }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
+
+          # On a pull request the point IS to build, and querying the registry
+          # would need a login this run deliberately does not perform.
+          if [ "${EVENT}" = "pull_request" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Pull request: building to validate, without publishing."
+            exit 0
+          fi
 
           if [ "${FORCE}" = "true" ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
@@ -132,7 +151,7 @@ jobs:
           }
 
       - name: Push
-        if: steps.decide.outputs.build == 'true'
+        if: steps.decide.outputs.build == 'true' && github.event_name != 'pull_request'
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
@@ -149,6 +168,7 @@ jobs:
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
           BUILT: ${{ steps.decide.outputs.build }}
+          EVENT: ${{ github.event_name }}
         run: |
           {
             echo "### Claude Code image"
@@ -157,7 +177,9 @@ jobs:
             echo "|---|---|"
             echo "| dist-tag followed | \`${DIST_TAG:-unresolved}\` |"
             echo "| version resolved | \`${VERSION:-unresolved}\` |"
-            if [ "${BUILT}" = "true" ]; then
+            if [ "${EVENT}" = "pull_request" ]; then
+              echo "| result | built and ran, not published (pull request) |"
+            elif [ "${BUILT}" = "true" ]; then
               echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${DIST_TAG}\` |"
             else
               echo "| result | nothing to do, this version was already published |"
