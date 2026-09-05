@@ -1,0 +1,196 @@
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Build and publish
+
+# Three ways in, and only two of them ever touch the registry.
+#
+# On a pull request the job resolves the version, builds and runs the image, then
+# stops: no login, no push. Without that, nothing in this repository would check
+# its two real files before they reach the default branch, and the first evidence
+# that the Dockerfile builds would arrive on a Monday morning in a scheduled job
+# whose failure nobody is watching for.
+#
+# The pull_request trigger carries NO paths filter, deliberately. A documentation
+# change cannot break the image, so filtering looks free -- but this job is a
+# REQUIRED status check, and a filtered workflow does not report a skipped check,
+# it reports nothing at all. A required check that never reports leaves the pull
+# request waiting for it forever, with no error to read. Twenty-five seconds on a
+# public repository's unmetered minutes is the price of that not happening, and
+# it is not wasted either: the base image is a floating tag, so re-proving that
+# today's still builds is worth something on its own.
+on:
+  schedule:
+    # Monday, 05:17 UTC. An odd minute rather than :00, where every cron on
+    # GitHub queues at once and scheduled runs get delayed.
+    - cron: "17 5 * * 1"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: "npm dist-tag to follow (default: the NPM_DIST_TAG variable, else stable)"
+        required: false
+        type: string
+      force:
+        description: "Rebuild and republish even if the version tag already exists"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+# Publishing runs never cancel each other: a cancelled push can leave a tag
+# pointing at a partially uploaded manifest. Pull request runs are throwaway, so
+# a newer push supersedes an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  publish:
+    name: Build, verify, and publish when a new version appears
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Resolve the image name and the version to build
+        id: resolve
+        env:
+          # "stable" lags "latest" by a few releases and is the safer channel for
+          # an image used daily. Override per-repository with the NPM_DIST_TAG
+          # variable, or per-run with the workflow input.
+          DIST_TAG: ${{ inputs.dist_tag || vars.NPM_DIST_TAG || 'stable' }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # A registry reference must be lowercase. This organisation's name
+          # carries capitals, so ${{ github.repository }} cannot be used as-is:
+          # docker rejects it at push time, after a successful build.
+          image="ghcr.io/$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+
+          version="$(npm view "@anthropic-ai/claude-code@${DIST_TAG}" version)"
+          if [ -z "$version" ]; then
+            echo "::error::npm returned no version for dist-tag '${DIST_TAG}'" >&2
+            exit 1
+          fi
+
+          {
+            echo "image=${image}"
+            echo "version=${version}"
+            echo "dist_tag=${DIST_TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Following dist-tag '${DIST_TAG}', which resolves to ${version}."
+
+      - name: Log in to ghcr.io
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
+
+      - name: Decide whether there is anything to build
+        id: decide
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          FORCE: ${{ inputs.force }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          # On a pull request the point IS to build, and querying the registry
+          # would need a login this run deliberately does not perform.
+          if [ "${EVENT}" = "pull_request" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Pull request: building to validate, without publishing."
+            exit 0
+          fi
+
+          if [ "${FORCE}" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Forced rebuild requested."
+            exit 0
+          fi
+
+          if docker manifest inspect "${IMAGE}:${VERSION}" >/dev/null 2>&1; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}:${VERSION} is already published. Nothing to do."
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}:${VERSION} is not published yet."
+          fi
+
+      - name: Checkout
+        if: steps.decide.outputs.build == 'true'
+        uses: actions/checkout@v5
+
+      - name: Build
+        if: steps.decide.outputs.build == 'true'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg "CLAUDE_CODE_VERSION=${VERSION}" \
+            --tag "${IMAGE}:${VERSION}" \
+            --tag "${IMAGE}:${DIST_TAG}" \
+            .
+
+      # An image that builds is not an image that runs. This catches a base image
+      # that changed under us, a missing runtime dependency, or an npm package
+      # that installed without its entry point being executable.
+      - name: Verify the built image actually runs
+        if: steps.decide.outputs.build == 'true'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          reported="$(docker run --rm "${IMAGE}:${VERSION}" --version)"
+          echo "Container reports: ${reported}"
+          printf '%s' "$reported" | grep -qF "${VERSION}" || {
+            echo "::error::the image does not report the version it was built with" >&2
+            exit 1
+          }
+
+      - name: Push
+        if: steps.decide.outputs.build == 'true' && github.event_name != 'pull_request'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:${DIST_TAG}"
+
+      - name: Summary
+        if: always()
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          BUILT: ${{ steps.decide.outputs.build }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          {
+            echo "### Claude Code image"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| dist-tag followed | \`${DIST_TAG:-unresolved}\` |"
+            echo "| version resolved | \`${VERSION:-unresolved}\` |"
+            if [ "${EVENT}" = "pull_request" ]; then
+              echo "| result | built and ran, not published (pull request) |"
+            elif [ "${BUILT}" = "true" ]; then
+              echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${DIST_TAG}\` |"
+            else
+              echo "| result | nothing to do, this version was already published |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
