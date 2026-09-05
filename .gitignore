@@ -1,0 +1,18 @@
+# Two rules, and no more. A .gitignore full of entries for toolchains this
+# repository does not use costs a reader the time it takes to work out that
+# node_modules/, __pycache__/ and build/ can never appear here -- there is no
+# build step, no dependency tree and no compiler in this tree, only a Dockerfile
+# and a workflow. Both lines below name something that can genuinely land in this
+# working directory, and both would do damage if committed.
+
+# Claude Code writes this file itself, to record the permissions a developer
+# granted during a session on their own machine. It is per-person state that
+# shadows the shared .claude/settings.json; committed, it silently widens what
+# every later session is allowed to run without asking.
+.claude/settings.local.json
+
+# Anyone testing the image locally reaches for "docker run --env-file .env" the
+# moment they want to pass an API key or a proxy setting to the container. No
+# credential belongs in this repository -- the image is built with none, and the
+# ones a container uses arrive at run time.
+.env

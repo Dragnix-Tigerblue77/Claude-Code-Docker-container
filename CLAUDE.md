@@ -1,0 +1,127 @@
+<!--
+SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+# Working in this repository
+
+This repository produces one thing: a Docker image with Claude Code installed in it,
+published to `ghcr.io`. It contains no source code of its own. The CLI comes from the npm
+package `@anthropic-ai/claude-code`, its runtime dependencies from apt, and nothing in this
+tree is copied into the image. So every question here is about packaging, pinning and
+publication, and none is about how Claude Code behaves: a defect in the tool belongs
+upstream, in `anthropics/claude-code`, not here.
+
+Two files carry all of it, and that is worth keeping. A change that seems to need a third
+file is worth a second look before it is written.
+
+## Layout
+
+| File | What it holds |
+| --- | --- |
+| `Dockerfile` | The image: Node LTS base, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
+| `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
+| `README.md` | What the image is and how to run it |
+| `LICENSE` | AGPL-3.0-only |
+
+## Commands
+
+```bash
+# What CI does, in the order it does it
+npm view @anthropic-ai/claude-code@stable version     # the version the workflow resolves
+npm view @anthropic-ai/claude-code dist-tags          # stable, latest, and how far apart they are
+docker build --build-arg CLAUDE_CODE_VERSION=<version> -t claude-code:dev .
+docker run --rm claude-code:dev --version             # must report the version it was built with
+```
+
+`CLAUDE_CODE_VERSION` has no default and the `Dockerfile` refuses to build without it. That
+is deliberate: a build that resolves its own version produces an image whose content depends
+on the day it ran, which can be neither reproduced nor rolled back.
+
+**A build needs a Docker daemon, and Claude Code on the web has none.** The binary is on the
+PATH, so it looks runnable right up until it answers "cannot connect to the Docker daemon".
+Say so rather than reporting a build that did not happen: piped into `tail` or `head` it
+exits 0 whatever docker did, because the status is the pipe's last command. Nothing is lost
+by leaving it out where it cannot run, since the workflow builds the image and runs it on
+every pull request touching the `Dockerfile` or the workflow itself. It costs a CI round
+trip, which is the price of not having a daemon rather than a reason to skip the check.
+
+## Invariants
+
+These are settled decisions with a cost behind them. Do not "clean them up".
+
+- **The installed version is always pinned, and the image never publishes a `latest` tag.**
+  Three separate things hide behind the word "latest" and only one of them is wanted here.
+  The npm package is installed at an exact version passed as a build argument, never as a
+  bare `npm install -g @anthropic-ai/claude-code`. The dist-tag the workflow follows is
+  `stable`, not `latest`: `latest` is whatever was published most recently, `stable` lags it
+  by a few releases and has therefore survived contact with other people. And the image is
+  pushed under its version tag plus the dist-tag it followed, so the moving tag says which
+  channel it came from; a `:latest` tag would mean "whatever was pushed most recently",
+  which is precisely the state nobody can roll back to.
+- **Every workflow starts with the two SPDX lines**, before its `name:`, in the form used
+  across this owner's repositories:
+
+  ```yaml
+  # SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+  # SPDX-License-Identifier: AGPL-3.0-only
+  ```
+
+  The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
+  `LICENSE` at the root loses that statement the moment it is copied out on its own, which
+  is what happens to a workflow that someone finds useful.
+- **The default branch is `main`.** Branch from it, target it. Other repositories of this
+  owner still use `master`, and a pull request opened against a branch that does not exist
+  here fails at the API call, after the work is done.
+- **Open a pull request assigned to `tigerblue77`, and never as a draft.** Both are fields
+  on the call that creates it, and the session that would come back to repair them has ended
+  by then. A web session's harness defaults to draft, which buys nothing here -- a draft has
+  to be converted before it can be merged at all -- and unassigned work is not on anybody's
+  list, so it is remembered rather than scheduled.
+- **Everything committed here is written in English.** The repository is public and the
+  audience for an image of an Anthropic CLI is not a French-speaking one. Issues and pull
+  requests are written in French, which is the maintainer's working language; that stops at
+  the tree.
+
+## The authentication trap
+
+Claude Code keeps its authentication state in **two** places: the directory `~/.claude/`
+**and** the file `~/.claude.json`, which sits **beside** that directory rather than inside
+it. A volume or bind mount on `~/.claude` alone therefore persists half the state and loses
+the other half every time the container is recreated. The symptom is a login that
+disappears for no visible reason, which gets diagnosed as a bug in the CLI long before
+anyone suspects the mount. Mount the whole home directory:
+
+```bash
+docker run --rm -it \
+  -v claude_home:/home/node \
+  -v "$PWD:/workspace" \
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable
+```
+
+This is why the `Dockerfile` declares no `VOLUME` at all: an anonymous volume on the wrong
+path would make the half-persisted state the default for everybody who runs the image
+without reading anything. No credential is ever baked into the image; they arrive at run
+time, and each person authenticates with their own.
+
+## Environment
+
+`.claude/settings.json` pre-approves a short list of commands, so a session runs them without
+stopping to ask: `docker build`, `docker run --rm`, `npm view`, and the read-only half of
+`git` (`status`, `diff`, `log`, `show`). They are what checking a change here consists of.
+
+That list is a standing grant to every session opened in this repository, so adding to it is
+a decision to argue rather than a line to append. Two of its shapes are deliberate.
+`docker run` is granted only with the `--rm` prefix: that flag sandboxes nothing, it simply
+pins the shape this repository actually uses -- build, run once, throw away -- and leaves a
+container that outlives the session, or one given a bind-mounted home directory, as
+something worth stopping to ask about. And `git` is granted by subcommand rather than as
+`git:*`, because the same binary that reads the tree also rewrites and pushes it.
+
+There is no `SessionStart` hook here, unlike this owner's other repositories. A hook earns
+its synchronous seconds by installing what CI will gate on, and nothing here is gated on a
+tool a hook could install: the one thing a session needs beyond `git` is a Docker daemon,
+which is not an apt package. If a lint ever gates pull requests -- `hadolint` on the
+`Dockerfile`, `actionlint` or `yamllint` on the workflow -- installing it in a hook is the
+way to keep those findings out of a CI round trip, and the hook in
+`tigerblue77/dell_idrac_fan_controller_docker` is the model to copy.
