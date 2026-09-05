@@ -1,0 +1,85 @@
+Claude Code Docker container
+============================
+
+Copyright (C) 2026 Tigerblue77 and the Claude Code Docker container
+contributors.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License, version 3, as
+published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero
+General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full licence text is in the LICENSE file next to this one.
+
+A separate commercial licence is available for parties who cannot meet
+the obligations of the AGPL. See LICENSE-COMMERCIAL.md. Which of the two
+applies is the recipient's choice: taking the program under the AGPL
+requires no permission, no registration and no notice to anyone.
+
+
+Third-party and upstream material
+---------------------------------
+
+This repository is not a fork, and no inherited licence applies to it.
+
+It was one, briefly. It began as a fork of anthropics/claude-code
+<https://github.com/anthropics/claude-code>, that fork was deleted, and
+the repository was recreated clean. The reason was that the upstream
+holds no source for the CLI at all — it is a changelog, documentation,
+plugins, examples and issues, and the artefact is the npm package — so
+forking it bought nothing while carrying its issue-triage workflows and
+its fork network's visibility along with it.
+
+The consequence is recorded here because it is the kind of thing a
+downstream recipient cannot verify for themselves years later: no line
+of anthropics/claude-code survives in this tree. The Dockerfile, the
+workflow and the documentation here were written for this project. There
+is therefore no inherited MIT notice reproduced in this file, and none is
+owed.
+
+What this project writes is the recipe, not the contents. The Docker
+image it publishes is, by volume, almost entirely software that this
+project neither wrote nor distributes in source form here:
+
+    - the Node base image, and the Debian userland underneath it;
+    - @anthropic-ai/claude-code itself, installed unmodified from npm;
+    - git, ripgrep, jq and less, from Debian.
+
+Each of these is governed by its own terms, and those terms are the ones
+shipped inside the image itself. They are aggregated with this program,
+not derived from it: the AGPL covers this project's own work — the
+Dockerfile, the workflow, the scripts and the documentation — and does
+not, and could not, relicense any of the above. Building an AGPL recipe
+around a piece of software does not place that software under the AGPL.
+
+Claude Code itself remains subject to Anthropic's terms. This repository
+hosts the unmodified binary and nothing more, which is what Anthropic
+explicitly permits; installing it through this image grants no right that
+Anthropic has not already granted, and takes none away either. Anyone
+redistributing the image, or building a service on top of it, answers to
+those terms directly and not to this project. In particular, routing
+requests through a Free, Pro or Max subscription's credentials on
+somebody else's behalf is not permitted by them — each person
+authenticates with their own account.
+
+
+Attribution
+-----------
+
+Attribution is a licence obligation here, not a courtesy: AGPL-3.0
+sections 5(a) and 7(b) require the legal notices and the author
+attributions to be preserved in modified versions. Keeping this file, the
+LICENSE file and the SPDX headers in the files that carry them intact is
+what satisfies them.
+
+The people who wrote this program are listed in the repository's commit
+history, which is the authoritative record:
+
+    git shortlog -sne
