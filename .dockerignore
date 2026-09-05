@@ -1,0 +1,57 @@
+# What this file is worth here, and what it is not.
+#
+# The Dockerfile copies NOTHING out of the build context: Claude Code comes from
+# npm, its runtime dependencies from apt, and not one line of this repository
+# ends up in the image. So every path listed below is sent to the Docker daemon,
+# hashed into the context, and then never read. This repository is a handful of
+# text files, so what this saves is close to nothing -- which is exactly why the
+# file has to be argued rather than assumed.
+#
+# It is kept for three reasons that do not depend on how big the context is.
+#
+#   - The context is what a build is ALLOWED to see. The day someone adds a
+#     "COPY . ." -- by hand, or from a snippet that assumes an application image
+#     -- the difference between this file existing and not existing is the whole
+#     repository silently landing in a published layer, agent configuration and
+#     all. Nothing warns about that, and a layer that has shipped is public.
+#   - ".git" is the one entry with a real cost. It grows with every commit while
+#     the working tree stays the same size, and it is sent in full on every local
+#     build.
+#   - It states the intent. "This image is built from npm and apt, not from this
+#     tree" is a design decision, and a reader who wants to check it finds it
+#     written down instead of inferred from the absence of a COPY.
+#
+# Excluding everything with a bare "*" would be the shortest way to say the same
+# thing, and was considered. It is not used because it breaks the next COPY
+# instead of governing it: a build that suddenly cannot find a file it just added
+# reads as a Docker bug, while an explicit list reads as a decision to amend.
+
+# Version control history. The heaviest thing in the context, and the only entry
+# whose cost grows over time. Nothing in the build reads it.
+.git
+.gitattributes
+.gitignore
+
+# Repository automation. The build workflow lives in here and DRIVES the build;
+# it is never an input to it.
+.github
+
+# Instructions and pre-approved permissions for Claude Code sessions working ON
+# this repository. They describe the repository, not the image, and the image is
+# emphatically not the place to ship a permission list.
+.claude
+CLAUDE.md
+
+# Documentation. Written for a reader on GitHub, and reachable from inside the
+# image only if someone puts it there on purpose.
+README.md
+
+# Legal annexes -- LICENSE today, anything alongside it later. The image carries
+# no file from this repository, so the AGPL text that covers the Dockerfile and
+# the workflow has no reader inside the container; what the image does ship is
+# Node, the Debian packages and the npm package, each under its own terms and
+# each carrying its own licence where it was installed. Keeping LICENSE out of
+# the CONTEXT changes nothing about how this repository is licensed or
+# distributed.
+LICENSE*
+NOTICE
