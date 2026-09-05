@@ -10,15 +10,21 @@ name: Build and publish
 # its two real files before they reach the default branch, and the first evidence
 # that the Dockerfile builds would arrive on a Monday morning in a scheduled job
 # whose failure nobody is watching for.
+#
+# The pull_request trigger carries NO paths filter, deliberately. A documentation
+# change cannot break the image, so filtering looks free -- but this job is a
+# REQUIRED status check, and a filtered workflow does not report a skipped check,
+# it reports nothing at all. A required check that never reports leaves the pull
+# request waiting for it forever, with no error to read. Twenty-five seconds on a
+# public repository's unmetered minutes is the price of that not happening, and
+# it is not wasted either: the base image is a floating tag, so re-proving that
+# today's still builds is worth something on its own.
 on:
   schedule:
     # Monday, 05:17 UTC. An odd minute rather than :00, where every cron on
     # GitHub queues at once and scheduled runs get delayed.
     - cron: "17 5 * * 1"
   pull_request:
-    paths:
-      - "Dockerfile"
-      - ".github/workflows/build-and-publish.yml"
   workflow_dispatch:
     inputs:
       dist_tag:
