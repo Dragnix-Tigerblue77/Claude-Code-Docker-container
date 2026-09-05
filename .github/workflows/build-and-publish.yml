@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
 name: Build and publish
 
 # Three ways in, and only two of them ever touch the registry.
