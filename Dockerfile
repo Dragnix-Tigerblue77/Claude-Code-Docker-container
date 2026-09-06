@@ -63,7 +63,7 @@ RUN mkdir -p /workspace && chown node:node /workspace
 #   docker run --rm -it \
 #     -v claude_home:/home/node \
 #     -v "$PWD:/workspace" \
-#     ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable
+#     ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
 
 USER node
 WORKDIR /workspace

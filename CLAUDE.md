@@ -163,7 +163,7 @@ anyone suspects the mount. Mount the whole home directory:
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
 ```
 
 This is why the `Dockerfile` declares no `VOLUME` at all: an anonymous volume on the wrong
