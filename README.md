@@ -2,6 +2,9 @@
 
 # Claude Code Docker image
 
+**❤️ This project now has a Sponsor button.** It stays free and open source, and always will.
+If it has saved you the afternoon it takes to package this yourself, you can [thank me by sponsoring me](https://github.com/sponsors/tigerblue77). Thank you 🙏
+
 A Docker image with [Claude Code](https://claude.com/claude-code) preinstalled, rebuilt automatically whenever a new version is published to npm.
 
 There is no official image. Anthropic publishes a Dev Container Feature and calls its own reference container « a working example rather than a maintained base image ». This repository fills that gap, and modifies nothing : the binary inside is the one Anthropic publishes, installed from npm, untouched.
@@ -11,8 +14,10 @@ There is no official image. Anthropic publishes a Dev Container Feature and call
   <li><a href="#what-this-image-is-not">What this image is not</a></li>
   <li><a href="#requirements">Requirements</a></li>
   <li><a href="#supported-architectures">Supported architectures</a></li>
+  <li><a href="#download-docker-image">Download Docker image</a></li>
   <li><a href="#available-tags">Available tags</a></li>
   <li><a href="#usage">Usage</a></li>
+  <li><a href="#parameters">Parameters</a></li>
   <li><a href="#authentication">Authentication</a></li>
   <li><a href="#whats-inside-the-image">What's inside the image</a></li>
   <li><a href="#how-the-image-is-built-and-updated">How the image is built and updated</a></li>
@@ -50,6 +55,19 @@ Worth saying first, because it decides whether this repository is of any use to 
 | `linux/arm64` | Not yet |
 
 Only `amd64` is built, deliberately. Every machine this image was written for is x86, and building both would double the time of every run to publish something nobody pulls. Adding `arm64` is a two-line change to the workflow the day an ARM machine turns up — open an issue rather than working around it.
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+<!-- DOWNLOAD DOCKER IMAGE -->
+## Download Docker image
+
+- [GitHub Containers Repository](https://github.com/Dragnix-Tigerblue77/Claude-Code-Docker-container/pkgs/container/claude-code-docker-container)
+
+There is no Docker Hub mirror. The image is published to `ghcr.io` alone, and the package being public, pulling it needs no authentication :
+
+```bash
+docker pull ghcr.io/dragnix-tigerblue77/claude-code-docker-container
+```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -111,6 +129,27 @@ volumes:
 ```
 
 `stdin_open` and `tty` are both needed : Claude Code is an interactive terminal program, and without them it starts and immediately finds nothing to read.
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+<!-- PARAMETERS -->
+## Parameters
+
+This image has almost none, and that is deliberate : Claude Code is configured from inside itself and from the home directory you mount, not from the environment.
+
+- `TZ` sets the container's timezone, which is what the CLI's timestamps and any date it writes will use. **Default** value is `Etc/UTC`. It is baked at build time and overridable at run time, so `-e TZ=Europe/Paris` is enough — no rebuild needed.
+- `DISABLE_AUTOUPDATER` is set to `1` in the image and **is not meant to be unset**. The version installed is pinned at build time and the image is rebuilt when a new one is published ; an updater running inside the container would replace that pinned version at runtime, leaving a container whose Claude Code no longer matches the tag it was pulled under, and losing the update again on the next recreation.
+
+Two volumes matter, and the first one is the one people get wrong :
+
+- `/home/node` — **the whole home directory**, not just `~/.claude`. This is where authentication lives, and it lives in two places : the directory `~/.claude/` **and** the file `~/.claude.json` beside it. See [Authentication](#authentication).
+- `/workspace` — the working directory, and the entry point's `WORKDIR`. Mount the project you want Claude Code to work on here.
+
+And two Compose flags are not optional : `stdin_open` and `tty`. Claude Code is an interactive terminal program, and without them it starts and immediately finds nothing to read.
+
+One build argument exists, for anyone building the image rather than pulling it :
+
+- `CLAUDE_CODE_VERSION` — the exact npm version to install. It has **no default value, and the build fails without it**. That is deliberate : a build that resolves its own version produces an image whose contents depend on the day it ran, which can be neither reproduced nor rolled back.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
