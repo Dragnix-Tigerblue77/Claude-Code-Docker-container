@@ -58,12 +58,17 @@ Only `amd64` is built, deliberately. Every machine this image was written for is
 
 | Tag | What it points at |
 | --- | --- |
-| `stable` | Follows the npm `stable` dist-tag, which trails `latest` by a few releases. **Use this one** unless you have a reason not to. |
-| `<version>` | One exact version, `2.1.236` for instance. Immutable : it is never rebuilt or moved. |
+| `latest` | The moving tag, rebuilt whenever a new Claude Code release appears on the followed channel or the base image gets security fixes. **Use this one** unless you have a reason not to. |
+| `<version>` | One exact version, `2.1.236` for instance. Immutable : once published it is never rebuilt or moved, which is what makes it the thing to pin and the thing to roll back to. |
 
-`stable` is the default because this is an image people run every day, and a few releases of lag is a good trade against being the one who finds the regression. The channel is a repository variable (`NPM_DIST_TAG`), so following `latest` instead is a settings change rather than a code change.
+**`latest` does not mean "the newest Claude Code".** The image is built from npm's `stable` channel, which trails npm's own `latest` by a few releases — 27 of them at the time of writing — and has therefore survived contact with other people. That lag is deliberate for an image people run every day : it is a good trade against being the one who finds the regression.
 
-There is deliberately **no `latest` tag on the image**. A tag named `latest` that follows npm's `stable` would mean two different things to two readers, and the one who guesses wrong finds out in production.
+The two names are separate settings, and either can be changed without touching code : `NPM_DIST_TAG` picks the npm channel the image is built from, `IMAGE_MOVING_TAG` picks the Docker tag it is published under. The channel a given image actually came from is recorded on it as a label, so you never have to guess :
+
+```bash
+docker image inspect ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest \
+  --format '{{index .Config.Labels "io.github.dragnix-tigerblue77.claude-code.npm-dist-tag"}}'
+```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -76,7 +81,7 @@ There is deliberately **no `latest` tag on the image**. A tag named `latest` tha
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
 ```
 
 The entry point is `claude` itself, so anything you would pass to the command line goes at the end :
@@ -85,7 +90,7 @@ The entry point is `claude` itself, so anything you would pass to the command li
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable \
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest \
   --version
 ```
 
@@ -94,7 +99,7 @@ docker run --rm -it \
 ```yaml
 services:
   claude-code:
-    image: ghcr.io/dragnix-tigerblue77/claude-code-docker-container:stable
+    image: ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
     volumes:
       - claude_home:/home/node
       - ./:/workspace
