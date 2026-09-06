@@ -8,7 +8,7 @@ name: Build and publish
 # TWO THINGS make the published image stale, and the schedule below exists for
 # both. A new Claude Code release is the obvious one. The other is the base: FROM
 # names a floating tag, so Debian's and Node's security fixes land on
-# node:24-slim without a line of this repository changing, and an image built
+# the base without a line of this repository changing, and an image built
 # before them keeps shipping what they fixed. Rebuilding only when the npm
 # version moves would leave that entirely to the CLI's release cadence -- quiet
 # fortnight, fortnight-old base -- which is not a property anybody chose.
@@ -159,7 +159,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Read from the Dockerfile rather than repeating "node:24-slim" here.
+          # Read from the Dockerfile rather than repeating the base image name here.
           # Dependabot edits that FROM line and knows nothing of this file, so a
           # copy kept here would start describing the previous base the moment
           # one of its pull requests is merged -- silently, a wrong label being
@@ -313,7 +313,7 @@ jobs:
       #
       # "base.digest" and "base.name" record which bytes this image was built
       # on. The base is a FLOATING tag, so the only way to answer "is what is
-      # published still built on the current node:24-slim ?" is to have written
+      # published still built on the current base ?" is to have written
       # the answer down at build time. Nothing reads it back yet -- the workflow
       # that does is issue #1's, and it cannot be written until this exists;
       #
@@ -377,7 +377,7 @@ jobs:
       # What it does NOT check is the base the build really used, and that is
       # not an oversight -- it was tried and does not work. BuildKit keeps base
       # images in its own cache and never puts them in the image store, so
-      # "docker image inspect node:24-slim" answers "No such image" after a
+      # "docker image inspect <base>" answers "No such image" after a
       # perfectly good build. Nothing short of pulling the base separately, or
       # reading the provenance attestation off an image that has already been
       # pushed, can answer it, and neither is worth its price here : see the
