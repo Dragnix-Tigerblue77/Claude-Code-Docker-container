@@ -75,15 +75,34 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   <https://nodejs.org/en/about/previous-releases> before merging -- that page is
   the authority, and the answer changes twice a year.
 
-- **The installed version is always pinned, and the image never publishes a `latest` tag.**
-  Three separate things hide behind the word "latest" and only one of them is wanted here.
-  The npm package is installed at an exact version passed as a build argument, never as a
-  bare `npm install -g @anthropic-ai/claude-code`. The dist-tag the workflow follows is
-  `stable`, not `latest`: `latest` is whatever was published most recently, `stable` lags it
-  by a few releases and has therefore survived contact with other people. And the image is
-  pushed under its version tag plus the dist-tag it followed, so the moving tag says which
-  channel it came from; a `:latest` tag would mean "whatever was pushed most recently",
-  which is precisely the state nobody can roll back to.
+- **The installed version is always pinned. Three different things are called "latest"
+  here, and they are decided separately.**
+
+  *What is installed* is an exact version passed as a build argument, never a bare
+  `npm install -g @anthropic-ai/claude-code`. An image whose contents depend on the day it
+  was built can be neither reproduced nor rolled back.
+
+  *Which npm channel that version comes from* is `stable`, not `latest`. `latest` is
+  whatever was published most recently; `stable` lags it by a few releases -- 27 of them
+  when this was written -- and has therefore survived contact with other people. That is
+  what an image somebody runs daily wants underneath it. Override with the `NPM_DIST_TAG`
+  repository variable if that trade ever stops being the right one.
+
+  *Which Docker tag moves* is `latest`, and this reverses an earlier decision. The
+  objection to it was real and has not gone away: a moving tag means "whatever was pushed
+  most recently", which is not a state anyone can roll back to. What answers it is that
+  rolling back was never the moving tag's job -- the immutable `:<version>` tag is there
+  for exactly that, and a base-image refresh deliberately leaves it alone. Against that,
+  `latest` is the tag `docker pull <image>` resolves to when no tag is given, and an image
+  that cannot be pulled without reading the README first is an image that does not get
+  pulled. Override with `IMAGE_MOVING_TAG`.
+
+  The moving tag used to be named after the npm channel, so the tag itself recorded which
+  channel the image came from. Decoupling the two lost that, so the channel is now written
+  on the image as a label, `io.github.dragnix-tigerblue77.claude-code.npm-dist-tag`. Do not
+  drop it: the publishing workflow's own decision to rebuild reads labels back off the
+  published image, and this one is how a human answers "which channel is this?" without
+  guessing from a tag that no longer says.
 - **Every workflow starts with the two SPDX lines**, before its `name:`, in the form used
   across this owner's repositories:
 
