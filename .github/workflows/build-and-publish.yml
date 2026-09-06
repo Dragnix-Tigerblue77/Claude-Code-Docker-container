@@ -128,16 +128,121 @@ jobs:
         if: steps.decide.outputs.build == 'true'
         uses: actions/checkout@v5
 
+      # The digest has to be resolved BEFORE the build, because a label is baked
+      # into the image config at build time and cannot be added afterwards
+      # without building again.
+      #
+      # Read from the registry's manifest rather than by pulling. "docker pull"
+      # would answer the same question and close the window below by leaving the
+      # image local for the build to reuse, at the cost of downloading eighty
+      # megabytes on every run including the ones with nothing to do -- against
+      # Docker Hub, whose anonymous limit is counted per IP and shared across
+      # GitHub's runners. Reading the manifest transfers a few kilobytes.
+      #
+      # What that leaves open is a few seconds between this read and the build's
+      # own pull, in which the floating tag could move and leave the label one
+      # digest behind the bytes. That is accepted rather than closed, because
+      # what it costs is bounded and self-repairing: the next scheduled run
+      # compares the recorded digest against the current one, finds them
+      # different, and rebuilds once. A base that moves inside a five-second
+      # window buys one unnecessary rebuild, not a wrong answer that persists.
+      #
+      # Closing it properly would mean pulling the base here -- eighty megabytes
+      # on every run -- or building against the digest instead of the tag, which
+      # means an ARG the Dockerfile's FROM line resolves and puts Dependabot's
+      # watch on that line at risk. Neither is worth removing a fault that
+      # repairs itself the following day.
+      - name: Pull the base image and record the digest it resolves to
+        id: base
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          set -euo pipefail
+
+          # Read from the Dockerfile rather than repeating "node:24-slim" here.
+          # Dependabot edits that FROM line and knows nothing of this file, so a
+          # copy kept here would start describing the previous base the moment
+          # one of its pull requests is merged -- silently, a wrong label being
+          # indistinguishable from a right one until something reads it back.
+          name="$(sed -n 's/^[[:space:]]*FROM[[:space:]]\{1,\}\([^[:space:]]\{1,\}\).*/\1/p' Dockerfile | head -n 1)"
+          if [ -z "$name" ]; then
+            echo "::error::could not read the base image from the Dockerfile's FROM line" >&2
+            exit 1
+          fi
+
+          # Retried, because this call reaches Docker Hub and Docker Hub is not
+          # reliable from a shared runner. It has already failed once here with
+          # "read: connection reset by peer" on the CDN, on a commit whose only
+          # sin was to run eight seconds after an identical one that passed, and
+          # a spent anonymous pull quota answers 429 the same way. Without the
+          # ladder, a reset is a red pull request to re-run by hand and a
+          # scheduled refresh silently skipped for the day
+          errors="$RUNNER_TEMP/base-inspect-error.txt"
+          digest=""
+          for delay in 5 15 45 0; do
+            if manifest="$(docker buildx imagetools inspect "$name" --format '{{json .Manifest}}' 2>"$errors")"; then
+              digest="$(printf '%s' "$manifest" | jq -r '.digest // empty')"
+              [ -n "$digest" ] && break
+            fi
+            if [ "$delay" -gt 0 ]; then
+              echo "::warning::could not resolve ${name}, retrying in ${delay}s"
+              sed 's/^/  /' "$errors" >&2 || true
+              sleep "$delay"
+            fi
+          done
+
+          if [ -z "$digest" ]; then
+            echo "::error::could not resolve the digest of ${name}" >&2
+            cat "$errors" >&2 || true
+            exit 1
+          fi
+
+          {
+            echo "name=${name}"
+            echo "digest=${digest}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Base image ${name} currently resolves to ${digest}."
+
+      # The labels are the OCI pre-defined annotation keys, and they are not
+      # decoration. Three of them do work nothing else does:
+      #
+      # "source" is what makes ghcr.io attach the package to this repository --
+      # the package page inherits the README, the licence and the visibility
+      # conversation instead of standing alone as an anonymous blob;
+      #
+      # "base.digest" and "base.name" record which bytes this image was built
+      # on. The base is a FLOATING tag, so the only way to answer "is what is
+      # published still built on the current node:24-slim ?" is to have written
+      # the answer down at build time. Nothing reads it back yet -- the workflow
+      # that does is issue #1's, and it cannot be written until this exists;
+      #
+      # "version" says which Claude Code is inside, readable with docker
+      # inspect and without pulling the whole image.
       - name: Build
         if: steps.decide.outputs.build == 'true'
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          BASE_NAME: ${{ steps.base.outputs.name }}
+          BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+          REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           docker build \
             --build-arg "CLAUDE_CODE_VERSION=${VERSION}" \
+            --label "org.opencontainers.image.title=Claude Code Docker container" \
+            --label "org.opencontainers.image.description=Claude Code, unmodified, packaged as a container image" \
+            --label "org.opencontainers.image.source=${SOURCE}" \
+            --label "org.opencontainers.image.url=${SOURCE}" \
+            --label "org.opencontainers.image.documentation=${SOURCE}#readme" \
+            --label "org.opencontainers.image.licenses=AGPL-3.0-only" \
+            --label "org.opencontainers.image.version=${VERSION}" \
+            --label "org.opencontainers.image.revision=${REVISION}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.base.name=${BASE_NAME}" \
+            --label "org.opencontainers.image.base.digest=${BASE_DIGEST}" \
             --tag "${IMAGE}:${VERSION}" \
             --tag "${IMAGE}:${DIST_TAG}" \
             .
@@ -158,6 +263,66 @@ jobs:
             echo "::error::the image does not report the version it was built with" >&2
             exit 1
           }
+
+      # A label that failed to be written is indistinguishable from one that was
+      # never asked for, and the workflow issue #1 needs will read two of these
+      # back to decide whether to rebuild. Checking them here means a typo in a
+      # --label flag fails the pull request that introduced it, rather than
+      # turning into a refresh job that finds nothing recorded and rebuilds
+      # every night for ever.
+      #
+      # What it does NOT check is the base the build really used, and that is
+      # not an oversight -- it was tried and does not work. BuildKit keeps base
+      # images in its own cache and never puts them in the image store, so
+      # "docker image inspect node:24-slim" answers "No such image" after a
+      # perfectly good build. Nothing short of pulling the base separately, or
+      # reading the provenance attestation off an image that has already been
+      # pushed, can answer it, and neither is worth its price here : see the
+      # resolution step for what the remaining window is and why it heals
+      - name: Verify the labels the image is supposed to carry
+        if: steps.decide.outputs.build == 'true'
+        env:
+          IMAGE: ${{ steps.resolve.outputs.image }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          BASE_DIGEST: ${{ steps.base.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          label() {
+            docker image inspect "${IMAGE}:${VERSION}" \
+              --format "{{index .Config.Labels \"$1\"}}"
+          }
+
+          failed=false
+          for key in \
+            org.opencontainers.image.source \
+            org.opencontainers.image.licenses \
+            org.opencontainers.image.version \
+            org.opencontainers.image.revision \
+            org.opencontainers.image.base.name \
+            org.opencontainers.image.base.digest
+          do
+            value="$(label "$key")"
+            if [ -z "$value" ] || [ "$value" = "<no value>" ]; then
+              echo "::error::${key} is missing from the built image" >&2
+              failed=true
+            else
+              echo "${key} = ${value}"
+            fi
+          done
+
+          # Not just "is it set" for this one : it is the value a refresh
+          # decision gets taken on, so it is checked against what the resolution
+          # step actually read rather than merely being non-empty. That catches
+          # the plausible failure -- a --label wired to the wrong variable, or to
+          # a variable that expanded to nothing
+          recorded="$(label org.opencontainers.image.base.digest)"
+          if [ "$recorded" != "$BASE_DIGEST" ]; then
+            echo "::error::the image records base digest ${recorded}, this run resolved ${BASE_DIGEST}" >&2
+            failed=true
+          fi
+
+          [ "$failed" = false ]
 
       - name: Push
         if: steps.decide.outputs.build == 'true' && github.event_name != 'pull_request'
