@@ -84,8 +84,9 @@ updates:
 # So there is nothing here for Dependabot to read and nothing for it to bump : an
 # "npm" entry would scan the repository, find no manifest, and never open a
 # single pull request. The update mechanism for that dependency already exists
-# and is the weekly workflow run, which rebuilds and republishes only when the
-# resolved version differs from what is already on the registry.
+# and is the daily workflow run, which rebuilds and republishes only when the
+# resolved version, or the digest of the base image, differs from what the
+# published image records in its own labels.
 #
 # Not watched either : devcontainers. This repository has no .devcontainer/
 # directory. Add the ecosystem the day it gains one.
