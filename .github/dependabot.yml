@@ -43,8 +43,8 @@ updates:
           - "minor"
           - "patch"
 
-  # The Dockerfile's "FROM node:24-slim", and the reason this file exists at all:
-  # it is the one dependency of this repository that reaches users, since the
+  # The Dockerfile's "FROM node:<major>-slim", and the reason this file exists at
+  # all: it is the one dependency of this repository that reaches users, since the
   # image built from it is what they run.
   - package-ecosystem: "docker"
     directory: "/"
@@ -58,13 +58,19 @@ updates:
     open-pull-requests-limit: 99
     # No group and no auto-merge here, on purpose.
     #
-    # "24-slim" is a floating major tag : Node's own patch releases land on it
-    # without the text of the Dockerfile changing, which is why the Dockerfile
-    # stays on the tag rather than pinning a digest. The consequence is that the
-    # only update Dependabot can ever raise for this line is "25-slim" - a major
-    # one. There is no minor or patch stream to group, and nothing to hand to a
-    # workflow that merges without review : a new Node major under the CLI that
-    # ships to users is a decision, taken once a year, not a chore.
+    # The tag is a floating major : Node's own patch releases land on it without
+    # the text of the Dockerfile changing, which is why the Dockerfile stays on
+    # the tag rather than pinning a digest. The consequence is that every update
+    # Dependabot can raise for this line is a MAJOR one. There is no minor or
+    # patch stream to group, and nothing to hand to a workflow that merges
+    # without review : a new Node major under the CLI that ships to users is a
+    # decision, taken about once a year, not a chore.
+    #
+    # It does not step one major at a time either. Asked to move off 24, it
+    # proposed 26 and skipped 25 outright, 25 having reached end of life on
+    # 31 March 2026 -- so the version offered here is whatever Node still
+    # supports, not the next number up. Which of them may be accepted is the
+    # base-image rule in CLAUDE.md, and it is not "the newest one".
 
 # Not watched : npm.
 #
