@@ -1,6 +1,11 @@
-# Node 24 "Krypton" is the Active LTS. The package itself only asks for Node >= 18
-# (its "engines" field), so this is a deliberate choice of a supported base rather
-# than a constraint coming from upstream.
+# The base follows the rule in CLAUDE.md: an Active LTS Node line, or a Current one
+# within six months of becoming LTS. Which line satisfies that changes twice a year,
+# so the rule is stated there and the status is looked up on nodejs.org rather than
+# asserted here -- a comment naming a release as "the Active LTS" is wrong within
+# months, and this one was, sitting above a FROM line Dependabot had already moved.
+#
+# The package itself only asks for Node >= 18 (its "engines" field), so the base is a
+# deliberate choice rather than a constraint coming from upstream.
 #
 # Pinning this base by digest would make the build fully reproducible. It is left
 # on the tag for now so that base-image security updates arrive on their own; if

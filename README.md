@@ -178,7 +178,7 @@ Mount `/home/node` and both are covered.
 
 | | Why it is there |
 | --- | --- |
-| `node:24-slim` | Node 24 « Krypton » is the Active LTS. The package itself only asks for Node ≥ 18, so this is a choice of a supported base rather than a constraint. |
+| `node:26-slim` | The base follows a rule rather than a fixed version : an Active LTS Node line, or a Current one within six months of becoming LTS. The package itself only asks for Node ≥ 18, so this is a choice of a supported base rather than a constraint. |
 | `@anthropic-ai/claude-code` | Installed at a **pinned** version, supplied as a build argument. An image whose contents depend on the day it was built cannot be reproduced, and cannot be rolled back. |
 | `git` | Claude Code reads and writes repositories. |
 | `ripgrep` | Its file search falls back to a much slower path without it. |
@@ -196,9 +196,18 @@ Two settings are worth knowing about :
 <!-- HOW THE IMAGE IS BUILT AND UPDATED -->
 ## How the image is built and updated
 
-A workflow runs **every Monday**, on every pull request, and on demand.
+A workflow runs **every day**, on every pull request, and on demand.
 
-On a schedule or on demand it asks npm what the followed dist-tag resolves to, asks the registry whether that version is already published, and **stops there if it is**. A cron that rebuilt every time would publish fifty-two identical images a year and make the tag history useless for telling when anything actually changed.
+On a schedule or on demand it compares **two** things against the published moving tag, and rebuilds if either has moved :
+
+- the version npm resolves for the followed channel, against the one recorded on the published image ;
+- the current digest of the base image, against the one the published image was built on.
+
+Both are read back from the image's own OCI labels, so no state is kept anywhere that could fall out of step with the registry. **When neither has moved, nothing is built and nothing is pushed** — a cron that rebuilt every time would publish 365 identical images a year and make the tag history useless for telling when anything actually changed.
+
+The second comparison is why this runs daily rather than weekly. `FROM` names a floating tag, so Debian's and Node's security fixes land on the base without a line of this repository changing ; watching only the npm version would leave the patch latency of this image decided by Claude Code's release cadence. A run with nothing to do is two registry reads and no build at all.
+
+A rebuild caused by the base moving republishes the **moving tag only**. The version tag keeps the bytes it was published with, which is what makes it the thing to pin and to roll back to.
 
 On a pull request it stops one step short of the registry : it resolves the version, builds, and runs the image, then skips the login and the push.
 
@@ -225,9 +234,9 @@ Claude Code is interactive. `docker run` needs `-it`, and a Compose service need
 
 The container runs as the `node` user, whose numeric identifier is `1000`. A directory mounted from the host that belongs to another identifier will be read-only to it. Either adjust the ownership on the host, or run with `--user "$(id -u):$(id -g)"` — in which case the home directory volume has to be writable by that identifier too.
 
-### The weekly build published nothing
+### The scheduled build published nothing
 
-That is the normal outcome when npm has not released anything since the last run. The run's summary says so explicitly rather than leaving you to guess.
+That is the normal outcome when neither the followed npm channel nor the base image has moved since the last run. The run's summary names which of the two it checked and what it found, rather than leaving you to guess.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
