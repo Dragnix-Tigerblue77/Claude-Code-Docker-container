@@ -51,6 +51,10 @@ on:
         description: "npm dist-tag to follow (default: the NPM_DIST_TAG variable, else stable)"
         required: false
         type: string
+      moving_tag:
+        description: "Docker tag that moves (default: the IMAGE_MOVING_TAG variable, else latest)"
+        required: false
+        type: string
       force:
         description: "Rebuild and republish even when nothing moved"
         required: false
@@ -78,10 +82,23 @@ jobs:
       - name: Resolve the image name and the version to build
         id: resolve
         env:
-          # "stable" lags "latest" by a few releases and is the safer channel for
-          # an image used daily. Override per-repository with the NPM_DIST_TAG
-          # variable, or per-run with the workflow input.
+          # TWO NAMES, and they are deliberately not the same one.
+          #
+          # DIST_TAG is the npm channel this image is BUILT FROM. "stable" lags
+          # "latest" by a few releases -- 27 of them the day this was written --
+          # and has therefore survived contact with other people, which is what
+          # an image somebody runs daily wants underneath it.
+          #
+          # MOVING_TAG is the Docker tag this image is PUBLISHED UNDER. It is
+          # "latest" because that is the tag "docker pull <image>" resolves to
+          # when no tag is given, and an image nobody can pull without reading
+          # the README first is an image that does not get pulled.
+          #
+          # They used to be one value, which made the tag name double as the
+          # record of which channel the image came from. That record now lives
+          # in a label instead, since the tag no longer carries it.
           DIST_TAG: ${{ inputs.dist_tag || vars.NPM_DIST_TAG || 'stable' }}
+          MOVING_TAG: ${{ inputs.moving_tag || vars.IMAGE_MOVING_TAG || 'latest' }}
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -101,9 +118,11 @@ jobs:
             echo "image=${image}"
             echo "version=${version}"
             echo "dist_tag=${DIST_TAG}"
+            echo "moving_tag=${MOVING_TAG}"
           } >> "$GITHUB_OUTPUT"
 
-          echo "Following dist-tag '${DIST_TAG}', which resolves to ${version}."
+          echo "Following npm dist-tag '${DIST_TAG}', which resolves to ${version}."
+          echo "Publishing it under the moving Docker tag '${MOVING_TAG}'."
 
       # Both of these now run before the decision instead of after it: the
       # decision is taken on the base digest, so it has to be resolved first,
@@ -208,6 +227,7 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
           FORCE: ${{ inputs.force }}
           EVENT: ${{ github.event_name }}
@@ -239,7 +259,7 @@ jobs:
           # it cannot say whether the CHANNEL is up to date, which is the
           # question a refresh has to answer
           errors="$RUNNER_TEMP/imagetools-error.txt"
-          if config="$(docker buildx imagetools inspect "${IMAGE}:${DIST_TAG}" --format '{{json .Image}}' 2>"$errors")"; then
+          if config="$(docker buildx imagetools inspect "${IMAGE}:${MOVING_TAG}" --format '{{json .Image}}' 2>"$errors")"; then
             label() {
               printf '%s' "$config" \
                 | jq -r "if has(\"config\") then [.] else [.[]] end
@@ -258,7 +278,7 @@ jobs:
             # answer to "did anything move ?", and guessing here is what would
             # turn this job into an unconditional nightly republication, green
             # run after green run, with nobody noticing
-            echo "::error::Could not read ${IMAGE}:${DIST_TAG}, giving up rather than assuming something moved" >&2
+            echo "::error::Could not read ${IMAGE}:${MOVING_TAG}, giving up rather than assuming something moved" >&2
             cat "$errors" >&2
             exit 1
           fi
@@ -267,11 +287,11 @@ jobs:
             # Either the tag does not exist, or it predates the labels. Both are
             # answered by building once ; expected exactly once for the second,
             # and twice in a row means the publishing step is not recording them
-            decided true true "Nothing readable is published under ${DIST_TAG} yet. Building."
+            decided true true "Nothing readable is published under ${MOVING_TAG} yet. Building."
           fi
 
           if [ "$published_version" != "$VERSION" ]; then
-            decided true true "Published ${DIST_TAG} is on ${published_version}, npm resolves to ${VERSION}. Building."
+            decided true true "Published ${MOVING_TAG} is on ${published_version}, npm ${DIST_TAG} resolves to ${VERSION}. Building."
           fi
 
           if [ "$published_base" != "$BASE_DIGEST" ]; then
@@ -279,10 +299,10 @@ jobs:
             # exact set of bytes somebody may have pinned, and moving it would
             # take away the one thing a version tag is for -- rolling back to a
             # known state. Only the moving tag moves, which is what it is for
-            decided true false "Same version ${VERSION}, but the base moved from ${published_base:-nothing recorded} to ${BASE_DIGEST}. Rebuilding ${DIST_TAG} only."
+            decided true false "Same version ${VERSION}, but the base moved from ${published_base:-nothing recorded} to ${BASE_DIGEST}. Rebuilding ${MOVING_TAG} only."
           fi
 
-          decided false false "${IMAGE}:${DIST_TAG} is on ${VERSION} and on the current base. Nothing to do."
+          decided false false "${IMAGE}:${MOVING_TAG} is on ${VERSION} and on the current base. Nothing to do."
 
       # The labels are the OCI pre-defined annotation keys, and they are not
       # decoration. Three of them do work nothing else does:
@@ -305,6 +325,7 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_NAME: ${{ steps.base.outputs.name }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
@@ -324,8 +345,9 @@ jobs:
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.base.name=${BASE_NAME}" \
             --label "org.opencontainers.image.base.digest=${BASE_DIGEST}" \
+            --label "io.github.dragnix-tigerblue77.claude-code.npm-dist-tag=${DIST_TAG}" \
             --tag "${IMAGE}:${VERSION}" \
-            --tag "${IMAGE}:${DIST_TAG}" \
+            --tag "${IMAGE}:${MOVING_TAG}" \
             .
 
       # An image that builds is not an image that runs. This catches a base image
@@ -381,7 +403,8 @@ jobs:
             org.opencontainers.image.version \
             org.opencontainers.image.revision \
             org.opencontainers.image.base.name \
-            org.opencontainers.image.base.digest
+            org.opencontainers.image.base.digest \
+            io.github.dragnix-tigerblue77.claude-code.npm-dist-tag
           do
             value="$(label "$key")"
             if [ -z "$value" ] || [ "$value" = "<no value>" ]; then
@@ -410,7 +433,7 @@ jobs:
         env:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
-          DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           PUSH_VERSION: ${{ steps.decide.outputs.push_version }}
         run: |
           set -euo pipefail
@@ -424,7 +447,7 @@ jobs:
           else
             echo "Leaving ${IMAGE}:${VERSION} on the bytes it was published with."
           fi
-          docker push "${IMAGE}:${DIST_TAG}"
+          docker push "${IMAGE}:${MOVING_TAG}"
 
       - name: Summary
         if: always()
@@ -432,6 +455,7 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
+          MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_NAME: ${{ steps.base.outputs.name }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
           BUILT: ${{ steps.decide.outputs.build }}
@@ -444,16 +468,17 @@ jobs:
             echo
             echo "| | |"
             echo "|---|---|"
-            echo "| dist-tag followed | \`${DIST_TAG:-unresolved}\` |"
+            echo "| npm dist-tag followed | \`${DIST_TAG:-unresolved}\` |"
+            echo "| moving Docker tag | \`${MOVING_TAG:-unresolved}\` |"
             echo "| version resolved | \`${VERSION:-unresolved}\` |"
             echo "| base image | \`${BASE_NAME:-unresolved}\` |"
             echo "| base digest | \`${BASE_DIGEST:-unresolved}\` |"
             if [ "${EVENT}" = "pull_request" ]; then
               echo "| result | built and ran, not published (pull request) |"
             elif [ "${BUILT}" = "true" ] && [ "${PUSH_VERSION}" = "true" ]; then
-              echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${DIST_TAG}\` |"
+              echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${MOVING_TAG}\` |"
             elif [ "${BUILT}" = "true" ]; then
-              echo "| result | republished \`${IMAGE}:${DIST_TAG}\` on the current base, leaving \`${IMAGE}:${VERSION}\` untouched |"
+              echo "| result | republished \`${IMAGE}:${MOVING_TAG}\` on the current base, leaving \`${IMAGE}:${VERSION}\` untouched |"
             else
               echo "| result | nothing to do |"
             fi
