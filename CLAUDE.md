@@ -19,7 +19,7 @@ file is worth a second look before it is written.
 
 | File | What it holds |
 | --- | --- |
-| `Dockerfile` | The image: Node LTS base, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
+| `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
@@ -49,6 +49,31 @@ trip, which is the price of not having a daemon rather than a reason to skip the
 ## Invariants
 
 These are settled decisions with a cost behind them. Do not "clean them up".
+
+- **The base image follows a Node release line that is Active LTS, or a Current one
+  within six months of becoming LTS.** Today that is `node:26-slim`: Current since
+  5 May 2026, Active LTS around November 2026.
+
+  The rule used to read "Node LTS base", and it was wrong twice over. It made no
+  room for the only shape a Dependabot pull request on this line can have, and it
+  had no way to express the thing actually being protected -- which is not the
+  letter "LTS" but the guarantee that the line under a CLI shipped to other people
+  keeps receiving security fixes for years, not weeks.
+
+  A worked example, because this is the decision the rule exists to settle. Node 25
+  reached end of life on 31 March 2026 and must never be the base: adopting it
+  would mean shipping a runtime that receives nothing at all. Node 26 is Current
+  rather than LTS, so a strict reading refuses it -- yet it is on the six-month
+  path to LTS, it is the line Node's own security releases land on today, and
+  refusing it would have meant reverting to 24 for eight weeks and then merging the
+  identical bump again. The rule is written to say yes to the second and no to the
+  first, which "LTS only" could not do.
+
+  What it still refuses, and this is the part not to soften: an odd-numbered line,
+  which never becomes LTS and dies within a year of its release, and any line
+  already at end of life. When Dependabot proposes a major, check the status on
+  <https://nodejs.org/en/about/previous-releases> before merging -- that page is
+  the authority, and the answer changes twice a year.
 
 - **The installed version is always pinned, and the image never publishes a `latest` tag.**
   Three separate things hide behind the word "latest" and only one of them is wanted here.
