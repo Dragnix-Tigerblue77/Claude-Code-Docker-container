@@ -109,7 +109,7 @@ jobs:
       # decision is taken on the base digest, so it has to be resolved first,
       # and resolving it needs the Dockerfile
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       # The digest has to be resolved BEFORE the build, because a label is baked
       # into the image config at build time and cannot be added afterwards
