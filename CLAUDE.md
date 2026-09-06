@@ -185,10 +185,21 @@ container that outlives the session, or one given a bind-mounted home directory,
 something worth stopping to ask about. And `git` is granted by subcommand rather than as
 `git:*`, because the same binary that reads the tree also rewrites and pushes it.
 
-There is no `SessionStart` hook here, unlike this owner's other repositories. A hook earns
-its synchronous seconds by installing what CI will gate on, and nothing here is gated on a
-tool a hook could install: the one thing a session needs beyond `git` is a Docker daemon,
-which is not an apt package. If a lint ever gates pull requests -- `hadolint` on the
-`Dockerfile`, `actionlint` or `yamllint` on the workflow -- installing it in a hook is the
-way to keep those findings out of a CI round trip, and the hook in
-`tigerblue77/dell_idrac_fan_controller_docker` is the model to copy.
+`.claude/hooks/session-start.sh` runs at the start of every remote session, and it
+**installs nothing** -- which is what separates it from the hook it is modelled on in
+`tigerblue77/dell_idrac_fan_controller_docker`. Nothing here is gated on a tool a hook could
+apt-install: the one thing a session needs beyond `git` is a Docker daemon, which is not a
+package. What it configures instead is the one rule a session cannot satisfy by remembering
+it — **`git signoff`**, an alias that commits with the maintainer's `Signed-off-by` passed
+explicitly.
+
+Use it instead of `git commit -s`. That flag derives the trailer from the author, so on a
+commit authored under the agent it writes precisely the shape the Sign-off check refuses.
+
+The hook is repository-local, best-effort and never blocks a session: if it cannot set the
+alias it says so and tells you the `--trailer` form to pass by hand.
+
+If a lint ever gates pull requests -- `hadolint` on the `Dockerfile`, `actionlint` or
+`yamllint` on the workflow -- installing it in this same hook is the way to keep those
+findings out of a CI round trip, and the model repository's hook is what to copy for that
+half.
