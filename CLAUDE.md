@@ -141,6 +141,15 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   requests are written in French, which is the maintainer's working language; that stops at
   the tree.
 
+  **One thing inside a French pull request body stays English: the closing keyword.**
+  `Closes #NN` or `Fixes #NN`. GitHub recognises no other form, and it fails silently —
+  `Ferme #14` renders as a perfectly ordinary link to the issue, the pull request merges,
+  and the issue stays open with nobody notified. Measured here: #1, #14 and #15 were each
+  fully delivered and each sat open afterwards, because their pull requests all said
+  "Ferme". The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same
+  rule, written after it cost that repository an issue in exactly the same way; this one
+  did not, and repeated the mistake three times in one evening.
+
 ## The authentication trap
 
 Claude Code keeps its authentication state in **two** places: the directory `~/.claude/`
