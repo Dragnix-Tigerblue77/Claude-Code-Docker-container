@@ -21,6 +21,9 @@ file is worth a second look before it is written.
 | --- | --- |
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
+| `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
+| `.github/rulesets/main.json` | The checks that gate `main`, in the form GitHub's "Import a ruleset" takes |
+| `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
 
@@ -128,6 +131,15 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   ```bash
   git commit --trailer "Signed-off-by: Tigerblue77 <37409593+tigerblue77@users.noreply.github.com>"
   ```
+- **Dependabot's minor and patch updates merge themselves once CI is green, in every
+  repository of this owner.** A Dependabot pull request sitting open with every check green
+  is a defect in that process, not a task for a human. Here, as on wader/postfix-relay which
+  is the reference, GitHub does the waiting: `dependabot-auto-merge.yml` queues the merge with
+  `gh pr merge --auto` and never merges directly, and what it waits for is
+  `.github/rulesets/main.json`, which `.github/check-ruleset.sh` keeps naming jobs that exist.
+  A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
+  instead; the rule is the same. What gets through is decided by the build, not by a guess
+  about which ecosystem is risky: majors wait for a human, and so does anything red.
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
   here fails at the API call, after the work is done.

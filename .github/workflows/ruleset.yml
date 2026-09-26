@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Ruleset
+
+# .github/rulesets/main.json is the list of checks Dependabot's updates wait for
+# before they merge themselves, and a required check that no job reports blocks
+# every pull request with nothing to read. .github/check-ruleset.sh says why and
+# how it is read ; this only runs it, on every pull request, which is the one
+# place a rename of a job and the file it breaks meet.
+#
+# No paths filter, for the reason build-and-publish.yml gives : this job is
+# itself a required check, and a filtered workflow reports nothing at all rather
+# than a skip.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ruleset:
+    name: Check the ruleset names jobs that exist
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check the ruleset against the workflows
+        run: .github/check-ruleset.sh

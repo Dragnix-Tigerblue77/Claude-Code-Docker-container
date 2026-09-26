@@ -56,7 +56,9 @@ updates:
     # The limit is counted per entry, not shared with the one above, so it has to
     # be raised here too for the same reason it was raised there
     open-pull-requests-limit: 99
-    # No group and no auto-merge here, on purpose.
+    # No group here, on purpose, and in practice no auto-merge either : the
+    # auto-merge workflow takes every ecosystem's minor and patch updates, and
+    # this entry never raises one.
     #
     # The tag is a floating major : Node's own patch releases land on it without
     # the text of the Dockerfile changing, which is why the Dockerfile stays on
