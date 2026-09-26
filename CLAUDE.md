@@ -22,7 +22,7 @@ file is worth a second look before it is written.
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
-| `.github/rulesets/main.json` | The checks that gate `main`, in the form GitHub's "Import a ruleset" takes |
+| `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |

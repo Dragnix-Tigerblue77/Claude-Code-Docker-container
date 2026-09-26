@@ -18,9 +18,18 @@
 #   - every required context is the name of a job in a workflow a pull request
 #     starts. A job without a "name:" reports under its key, so the key is used ;
 #   - the file still gates the default branch : enforced, aimed at
-#     ~DEFAULT_BRANCH with nothing excluded, no bypass actor, one rule and of the
-#     type that requires checks. A re-export made after clicking around the
-#     settings page can bring any of those back while still parsing.
+#     ~DEFAULT_BRANCH with nothing excluded, no bypass actor, exactly one rule
+#     that requires checks, and no required approval. A re-export made after
+#     clicking around the settings page can bring any of those back while still
+#     parsing.
+#
+# The file is the whole of the live ruleset, not only its checks : main is also
+# protected against deletion and force-pushes, takes pull requests only and
+# keeps a linear history, and a file carrying the checks alone would drop all
+# four the day it was imported in place of the live one. Those four are not
+# asserted -- they are protections, not what makes the gate pass or fail. The
+# approval count is : one required approval holds every Dependabot update for a
+# person, however green.
 #
 # The workflows are read with awk rather than a YAML parser, which nothing here
 # installs. Every workflow in this repository is written in the one shape it
@@ -48,7 +57,8 @@ check '"active"' "$(jq -c '.enforcement' "$RULESET")" "enforcement"
 check '["~DEFAULT_BRANCH"]' "$(jq -c '.conditions.ref_name.include' "$RULESET")" "the branches it applies to"
 check '[]' "$(jq -c '.conditions.ref_name.exclude' "$RULESET")" "the branches it excludes"
 check '[]' "$(jq -c '.bypass_actors' "$RULESET")" "bypass actors"
-check '["required_status_checks"]' "$(jq -c '[.rules[].type]' "$RULESET")" "its rules"
+check '1' "$(jq '[.rules[] | select(.type == "required_status_checks")] | length' "$RULESET")" "the rules that require checks"
+check '0' "$(jq '[.rules[] | select(.type == "pull_request") | .parameters.required_approving_review_count] | add // 0' "$RULESET")" "the approvals a merge requires"
 
 reported=""
 for workflow in "$WORKFLOWS"/*.yml; do
