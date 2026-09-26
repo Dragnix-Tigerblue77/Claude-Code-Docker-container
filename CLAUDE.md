@@ -20,6 +20,7 @@ file is worth a second look before it is written.
 | File | What it holds |
 | --- | --- |
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
+| `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main`, after each merge and hourly, falling back to a merge commit. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
