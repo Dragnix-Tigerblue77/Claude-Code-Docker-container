@@ -141,6 +141,16 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
   instead; the rule is the same. What gets through is decided by the build, not by a guess
   about which ecosystem is risky: majors wait for a human, and so does anything red.
+- **Pull requests are kept level with the default branch, and never required to be, in
+  every repository of this owner.** "Require branches to be up to date before merging" stays
+  off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:
+  false` -- because whatever cannot be updated automatically would be blocked rather than
+  behind: a conflict, a fork, a draft, and every pull request after a Dependabot merge, which
+  starts no workflow. `auto_update_pull_request_branches.yml` does the updating instead, after
+  every merge and hourly, as best effort; it runs here because the repository is public and
+  its minutes cost nothing, while a private repository carries the same file switched off
+  behind the `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above
+  (tigerblue77/Dell_iDRAC_fan_controller_Docker#512, #35).
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
   here fails at the API call, after the work is done.
