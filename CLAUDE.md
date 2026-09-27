@@ -151,8 +151,7 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   Dependabot: a rebase pushed by anyone else strips the signature the auto-merge checks before
   it acts (#37). It runs here because the repository is public and its minutes cost nothing,
   while a private repository carries the same file switched off behind the
-  `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above
-  (tigerblue77/Dell_iDRAC_fan_controller_Docker#512, #35).
+  `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above (#35).
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
   here fails at the API call, after the work is done.
@@ -171,19 +170,36 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   request merges, and the issue stays open with nobody notified. Measured here, while pull
   request bodies were still written in French: #1, #14 and #15 were each fully delivered
   and each sat open afterwards, because their pull requests said "Ferme" when they merged.
-  The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same rule,
-  written after it cost that repository an issue in exactly the same way; this one did
-  not, and repeated the mistake three times in one evening.
+  A private sibling repository of this owner carries this same rule, written after it
+  cost that repository an issue in exactly the same way; this one did not, and repeated
+  the mistake three times in one evening.
 - **Issues and pull requests are written in English, and one that is not is flagged.**
-  Titles, bodies and comments, in every repository but one group: the private repositories
-  of the `Dragnix-Tigerblue77` organisation, where issues and pull requests are written in
-  French while code and commit messages stay in English. This one is in that organisation
-  but public, so the exemption does not reach it. An issue or a pull request found breaking
-  this, in a repository it covers, is never let pass silently: the maintainer is told,
-  every time, with the link, and offered a translation, which is made once they agree.
-  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006,
-  extended to pull requests by Tigerblue77-personal/Homelab_Ansible_deployment#1037;
-  #39, #41). What was opened here before the rule reached it was translated once it did.
+  Titles, bodies and comments, in every repository but the private ones whose own
+  instructions put issues and pull requests in French, the private repositories of the
+  `Dragnix-Tigerblue77` organisation among them, where code and commit messages still
+  stay in English. This one is in that organisation but public, so the exemption does not
+  reach it. An issue or a pull request found breaking this, in a repository it covers, is
+  never let pass silently: the maintainer is told, every time, with the link, and offered
+  a translation, which is made once they agree.
+  Shared like the rules above (#39, extended to pull requests by #41). What was opened
+  here before the rule reached it was translated once it did.
+- **Another repository of this owner is cited only where this one calls it**: pulls its
+  image, vendors its code, downloads its release, or registers something for it. Citing
+  means naming it, or pointing to its issues or pull requests. It is never cited to say
+  where a rule or a lesson came from, that a copy of a rule exists elsewhere, or how the
+  other one does it. A citation of that kind is a dependency with nothing keeping it
+  true: the other repository renumbers, is renamed, moves or goes private, and the
+  sentence citing it goes stale here without anything failing. So a rule shared across
+  this owner's repositories is written out here in full, standing on its own, with no
+  citation of its origin.
+
+  **A public repository never names a private one**, not even one it calls, nor cites
+  its issues or pull requests, nor describes what it holds: not in a file, a commit
+  message, a branch name, an issue, a pull request or a comment. This repository is
+  public, so everything written here is published, and neither the history nor an
+  edited issue takes a name back once it is out. "A private repository of this owner" is
+  as specific as a reference to one gets. Naming the public `Dragnix-Tigerblue77`
+  organisation is fine. Shared like the rules above (#47, #50).
 
 ## The authentication trap
 
@@ -221,12 +237,11 @@ something worth stopping to ask about. And `git` is granted by subcommand rather
 `git:*`, because the same binary that reads the tree also rewrites and pushes it.
 
 `.claude/hooks/session-start.sh` runs at the start of every remote session, and it
-**installs nothing** -- which is what separates it from the hook it is modelled on in
-`tigerblue77/dell_idrac_fan_controller_docker`. Nothing here is gated on a tool a hook could
-apt-install: the one thing a session needs beyond `git` is a Docker daemon, which is not a
-package. What it configures instead is the one rule a session cannot satisfy by remembering
-it — **`git signoff`**, an alias that commits with the maintainer's `Signed-off-by` passed
-explicitly.
+**installs nothing**, although installing what CI gates on is what such a hook is usually
+for. Nothing here is gated on a tool a hook could apt-install: the one thing a session needs
+beyond `git` is a Docker daemon, which is not a package. What it configures instead is the
+one rule a session cannot satisfy by remembering it — **`git signoff`**, an alias that
+commits with the maintainer's `Signed-off-by` passed explicitly.
 
 Use it instead of `git commit -s`. That flag derives the trailer from the author, so on a
 commit authored under the agent it writes precisely the shape the Sign-off check refuses.
@@ -236,5 +251,5 @@ alias it says so and tells you the `--trailer` form to pass by hand.
 
 If a lint ever gates pull requests -- `hadolint` on the `Dockerfile`, `actionlint` or
 `yamllint` on the workflow -- installing it in this same hook is the way to keep those
-findings out of a CI round trip, and the model repository's hook is what to copy for that
-half.
+findings out of a CI round trip, on the terms the hook already keeps: only in a remote
+session, best effort, and a failure reported rather than blocking the session.
