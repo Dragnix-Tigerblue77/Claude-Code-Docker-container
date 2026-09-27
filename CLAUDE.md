@@ -20,7 +20,7 @@ file is worth a second look before it is written.
 | File | What it holds |
 | --- | --- |
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
-| `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main`, after each merge and hourly, falling back to a merge commit. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
+| `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main` and was not opened by Dependabot, after each merge and hourly, falling back to a merge commit. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
@@ -147,9 +147,11 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   false` -- because whatever cannot be updated automatically would be blocked rather than
   behind: a conflict, a fork, a draft, and every pull request after a Dependabot merge, which
   starts no workflow. `auto_update_pull_request_branches.yml` does the updating instead, after
-  every merge and hourly, as best effort; it runs here because the repository is public and
-  its minutes cost nothing, while a private repository carries the same file switched off
-  behind the `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above
+  every merge and hourly, as best effort, and leaves Dependabot's own pull requests to
+  Dependabot: a rebase pushed by anyone else strips the signature the auto-merge checks before
+  it acts (#37). It runs here because the repository is public and its minutes cost nothing,
+  while a private repository carries the same file switched off behind the
+  `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above
   (tigerblue77/Dell_iDRAC_fan_controller_Docker#512, #35).
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
