@@ -175,12 +175,13 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   cost that repository an issue in exactly the same way; this one did not, and repeated
   the mistake three times in one evening.
 - **Issues and pull requests are written in English, and one that is not is flagged.**
-  Titles, bodies and comments, in every repository but one group: the private repositories
-  of the `Dragnix-Tigerblue77` organisation, where issues and pull requests are written in
-  French while code and commit messages stay in English. This one is in that organisation
-  but public, so the exemption does not reach it. An issue or a pull request found breaking
-  this, in a repository it covers, is never let pass silently: the maintainer is told,
-  every time, with the link, and offered a translation, which is made once they agree.
+  Titles, bodies and comments, in every repository but the private ones whose own
+  instructions put issues and pull requests in French, the private repositories of the
+  `Dragnix-Tigerblue77` organisation among them, where code and commit messages still
+  stay in English. This one is in that organisation but public, so the exemption does not
+  reach it. An issue or a pull request found breaking this, in a repository it covers, is
+  never let pass silently: the maintainer is told, every time, with the link, and offered
+  a translation, which is made once they agree.
   Shared like the rules above (#39, extended to pull requests by #41). What was opened
   here before the rule reached it was translated once it did.
 - **A public repository never names a private one**, nor cites its issues or pull
