@@ -3,6 +3,31 @@
 
 name: Dependabot auto-merge
 
+# Dependabot's minor and patch updates, every ecosystem, merge themselves once
+# the checks .github/rulesets/main.json requires are green on them. Majors stay
+# open for a review. The same shape as wader/postfix-relay's workflow of the
+# same name, which every repository of this owner is aligned on.
+#
+# "gh pr merge --auto" asks GitHub to merge LATER, once the required checks
+# pass, and it is GitHub that does the waiting. Two repository settings make
+# that true, and neither is a file: "Allow auto-merge" (Settings > General),
+# and a ruleset on main that requires checks. .github/rulesets/main.json is that
+# ruleset, in the form "Import a ruleset" takes, and .github/check-ruleset.sh
+# fails a pull request whose ruleset names a check no job reports.
+#
+# There is deliberately no fallback. The one this file used to carry,
+# "|| gh pr merge --squash", merged at once whenever "--auto" could not be
+# enabled -- which is exactly when nothing on main requires a check, so it
+# landed the update with no check having run. A pull request that cannot be
+# queued now stays open, which is visible, instead of merged, which is not.
+#
+# No filter on the ecosystem either. The docker entry of .github/dependabot.yml
+# can only ever raise majors, as its comment explains, so this never merges one
+# of those; and for anything else it is the build, not a guess about which
+# ecosystem is risky, that decides whether an update is safe.
+#
+# The merge is a squash, as every pull request on main is.
+
 on: pull_request
 
 permissions:
@@ -11,7 +36,7 @@ permissions:
 
 jobs:
   auto-merge:
-    name: Auto-merge minor and patch GitHub Actions updates
+    name: Queue minor and patch Dependabot updates for auto-merge
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event.pull_request.user.login == 'dependabot[bot]'
@@ -22,21 +47,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Major updates are excluded: their PRs wait for manual review.
-      # Docker updates are excluded too, and the why is in
-      # .github/dependabot.yml: the base image is followed by a floating major
-      # tag, so the only update Dependabot can raise for it is a major one.
-      # 'gh pr merge --auto' requires "Allow auto-merge" in the repo
-      # settings plus branch protection with required checks; when either
-      # is missing it exits non-zero, so fall back to an immediate direct
-      # merge (if branch protection exists, it still blocks any direct
-      # merge that would skip required checks).
       - name: Enable auto-merge
         if: >-
-          steps.metadata.outputs.package-ecosystem == 'github_actions' &&
-          (steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
-           steps.metadata.outputs.update-type == 'version-update:semver-patch')
-        run: gh pr merge --auto --squash "$PR_URL" || gh pr merge --squash "$PR_URL"
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
