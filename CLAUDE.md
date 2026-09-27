@@ -176,14 +176,17 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   not, and repeated the mistake three times in one evening.
 - **Issues and pull requests are written in English, and one that is not is flagged.**
   Titles, bodies and comments, in every repository but one group: the private repositories
-  of the `Dragnix-Tigerblue77` organisation, where issues and pull requests are written in
-  French while code and commit messages stay in English. This one is in that organisation
-  but public, so the exemption does not reach it. An issue or a pull request found breaking
-  this, in a repository it covers, is never let pass silently: the maintainer is told,
-  every time, with the link, and offered a translation, which is made once they agree.
-  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006,
-  extended to pull requests by Tigerblue77-personal/Homelab_Ansible_deployment#1037;
-  #39, #41). What was opened here before the rule reached it was translated once it did.
+  of the `Dragnix-Tigerblue77` organisation, and
+  `Tigerblue77-personal/Homelab_Ansible_deployment`, where issues and pull requests are
+  written in French while code and commit messages stay in English. This one is in that
+  organisation but public, so the exemption does not reach it. An issue or a pull request
+  found breaking this, in a repository it covers, is never let pass silently: the
+  maintainer is told, every time, with the link, and offered a translation, which is made
+  once they agree. Shared like the rules above
+  (Tigerblue77-personal/Homelab_Ansible_deployment#1006, extended to pull requests by
+  Tigerblue77-personal/Homelab_Ansible_deployment#1037, its exemption widened by
+  Tigerblue77-personal/Homelab_Ansible_deployment#1046; #39, #41, #45). What was opened
+  here before the rule reached it was translated once it did.
 
 ## The authentication trap
 
