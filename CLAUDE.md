@@ -161,27 +161,29 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   by then. A web session's harness defaults to draft, which buys nothing here -- a draft has
   to be converted before it can be merged at all -- and unassigned work is not on anybody's
   list, so it is remembered rather than scheduled.
-- **Everything committed here is written in English.** The repository is public and the
-  audience for an image of an Anthropic CLI is not a French-speaking one. Pull requests are
-  written in French, which is the maintainer's working language; that stops at the tree, and
-  at issues, which the next rule puts in English.
+- **Everything here is written in English, pull requests included.** The repository is
+  public and the audience for an image of an Anthropic CLI is not a French-speaking one.
+  This rule covers the tree and commit messages, the next one issues and pull requests.
 
-  **One thing inside a French pull request body stays English: the closing keyword.**
-  `Closes #NN` or `Fixes #NN`. GitHub recognises no other form, and it fails silently —
-  `Ferme #14` renders as a perfectly ordinary link to the issue, the pull request merges,
-  and the issue stays open with nobody notified. Measured here: #1, #14 and #15 were each
-  fully delivered and each sat open afterwards, because their pull requests all said
-  "Ferme". The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same
-  rule, written after it cost that repository an issue in exactly the same way; this one
-  did not, and repeated the mistake three times in one evening.
-- **Issues are written in English, and one that is not is flagged.** Titles, bodies and
-  comments, in every repository but one group: the private repositories of the
-  `Dragnix-Tigerblue77` organisation, where another language is fine. This one is in that
-  organisation but public, so the exemption does not reach it. An issue found breaking
+  **The closing keyword is written in English, whatever language the rest of the body is
+  in:** `Closes #NN` or `Fixes #NN`. GitHub recognises no other form, and it fails
+  silently — `Ferme #14` renders as a perfectly ordinary link to the issue, the pull
+  request merges, and the issue stays open with nobody notified. Measured here, while pull
+  request bodies were still written in French: #1, #14 and #15 were each fully delivered
+  and each sat open afterwards, because their pull requests said "Ferme" when they merged.
+  The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same rule,
+  written after it cost that repository an issue in exactly the same way; this one did
+  not, and repeated the mistake three times in one evening.
+- **Issues and pull requests are written in English, and one that is not is flagged.**
+  Titles, bodies and comments, in every repository but one group: the private repositories
+  of the `Dragnix-Tigerblue77` organisation, where issues and pull requests are written in
+  French while code and commit messages stay in English. This one is in that organisation
+  but public, so the exemption does not reach it. An issue or a pull request found breaking
   this, in a repository it covers, is never let pass silently: the maintainer is told,
   every time, with the link, and offered a translation, which is made once they agree.
-  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006, #39).
-  Every issue opened here before it, #1 to #37, is in French.
+  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006,
+  extended to pull requests by Tigerblue77-personal/Homelab_Ansible_deployment#1037;
+  #39, #41). What was opened here before the rule reached it was translated once it did.
 
 ## The authentication trap
 

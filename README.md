@@ -249,7 +249,7 @@ Issues and pull requests are welcome. A few conventions this repository holds to
 - **Workflow files carry an SPDX header.**
 - **Pull requests are never opened as drafts.**
 - The default branch is `main`.
-- Documentation here is in **English**, the repository being public. Issues are in French.
+- Documentation, issues and pull requests here are in **English**, the repository being public.
 
 See [`CONTRIBUTING.md`][link-to-contributing-file] for the rest, including what contributing implies about licensing.
 
