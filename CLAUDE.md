@@ -171,9 +171,9 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   request merges, and the issue stays open with nobody notified. Measured here, while pull
   request bodies were still written in French: #1, #14 and #15 were each fully delivered
   and each sat open afterwards, because their pull requests said "Ferme" when they merged.
-  The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same rule,
-  written after it cost that repository an issue in exactly the same way; this one did
-  not, and repeated the mistake three times in one evening.
+  A private sibling repository of this owner carries this same rule, written after it
+  cost that repository an issue in exactly the same way; this one did not, and repeated
+  the mistake three times in one evening.
 - **Issues and pull requests are written in English, and one that is not is flagged.**
   Titles, bodies and comments, in every repository but one group: the private repositories
   of the `Dragnix-Tigerblue77` organisation, where issues and pull requests are written in
@@ -181,9 +181,14 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   but public, so the exemption does not reach it. An issue or a pull request found breaking
   this, in a repository it covers, is never let pass silently: the maintainer is told,
   every time, with the link, and offered a translation, which is made once they agree.
-  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006,
-  extended to pull requests by Tigerblue77-personal/Homelab_Ansible_deployment#1037;
-  #39, #41). What was opened here before the rule reached it was translated once it did.
+  Shared like the rules above (#39, extended to pull requests by #41). What was opened
+  here before the rule reached it was translated once it did.
+- **A public repository never names a private one**, nor cites its issues or pull
+  requests, nor describes what it holds: not in a file, a commit message, a branch name,
+  an issue, a pull request or a comment. This repository is public, so everything written
+  here is published. A rule shared with a private repository is carried here without
+  citing where it came from, and "a private repository of this owner" is as specific as
+  a reference to one gets. Naming the public `Dragnix-Tigerblue77` organisation is fine.
 
 ## The authentication trap
 
