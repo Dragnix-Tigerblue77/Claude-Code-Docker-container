@@ -162,9 +162,9 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   to be converted before it can be merged at all -- and unassigned work is not on anybody's
   list, so it is remembered rather than scheduled.
 - **Everything committed here is written in English.** The repository is public and the
-  audience for an image of an Anthropic CLI is not a French-speaking one. Issues and pull
-  requests are written in French, which is the maintainer's working language; that stops at
-  the tree.
+  audience for an image of an Anthropic CLI is not a French-speaking one. Pull requests are
+  written in French, which is the maintainer's working language; that stops at the tree, and
+  at issues, which the next rule puts in English.
 
   **One thing inside a French pull request body stays English: the closing keyword.**
   `Closes #NN` or `Fixes #NN`. GitHub recognises no other form, and it fails silently —
@@ -174,6 +174,14 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   "Ferme". The sibling repository `AI-Docker-stack-Ansible-deployment` carries this same
   rule, written after it cost that repository an issue in exactly the same way; this one
   did not, and repeated the mistake three times in one evening.
+- **Issues are written in English, and one that is not is flagged.** Titles, bodies and
+  comments, in every repository but one group: the private repositories of the
+  `Dragnix-Tigerblue77` organisation, where another language is fine. This one is in that
+  organisation but public, so the exemption does not reach it. An issue found breaking
+  this, in a repository it covers, is never let pass silently: the maintainer is told,
+  every time, with the link, and offered a translation, which is made once they agree.
+  Shared like the rules above (Tigerblue77-personal/Homelab_Ansible_deployment#1006, #39).
+  Every issue opened here before it, #1 to #37, is in French.
 
 ## The authentication trap
 
