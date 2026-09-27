@@ -5,11 +5,10 @@
 
 # SessionStart hook for Claude Code on the web.
 #
-# It installs nothing, which is what makes it different from the one in
-# tigerblue77/dell_idrac_fan_controller_docker that it is modelled on. Nothing here is gated
-# on a tool a hook could apt-install : the one thing a session needs beyond git is a Docker
-# daemon, which is not a package. What this configures instead is the one rule a session
-# cannot satisfy by remembering it.
+# It installs nothing, although installing what CI gates on is what such a hook is usually
+# for. Nothing here is gated on a tool a hook could apt-install : the one thing a session
+# needs beyond git is a Docker daemon, which is not a package. What this configures instead
+# is the one rule a session cannot satisfy by remembering it.
 #
 # THE RULE. CONTRIBUTING.md requires a Signed-off-by on every commit, and the Sign-off
 # workflow now refuses a pull request without one. For a commit a session authored, the
