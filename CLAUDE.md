@@ -176,9 +176,6 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   request merges, and the issue stays open with nobody notified. Measured here, while pull
   request bodies were still written in French: #1, #14 and #15 were each fully delivered
   and each sat open afterwards, because their pull requests said "Ferme" when they merged.
-  A private sibling repository of this owner carries this same rule, written after it
-  cost that repository an issue in exactly the same way; this one did not, and repeated
-  the mistake three times in one evening.
 - **Issues and pull requests are written in English, and one that is not is flagged.**
   Titles, bodies and comments, in every repository but the private ones whose own
   instructions put issues and pull requests in French, the private repositories of the
