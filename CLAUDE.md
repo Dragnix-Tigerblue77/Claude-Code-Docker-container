@@ -20,7 +20,7 @@ file is worth a second look before it is written.
 | File | What it holds |
 | --- | --- |
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
-| `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main` and was not opened by Dependabot, after each merge and hourly, falling back to a merge commit. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
+| `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main` and was not opened by Dependabot, once `main` has been quiet for an hour after a push, falling back to a merge commit, and comment once on each one that conflicts. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
 | `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
@@ -146,12 +146,18 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:
   false` -- because whatever cannot be updated automatically would be blocked rather than
   behind: a conflict, a fork, a draft, and every pull request after a Dependabot merge, which
-  starts no workflow. `auto_update_pull_request_branches.yml` does the updating instead, after
-  every merge and hourly, as best effort, and leaves Dependabot's own pull requests to
-  Dependabot: a rebase pushed by anyone else strips the signature the auto-merge checks before
-  it acts (#37). It runs here because the repository is public and its minutes cost nothing,
-  while a private repository carries the same file switched off behind the
-  `PULL_REQUESTS_UPDATE_ENABLED` variable. Shared like the rule above (#35).
+  starts no workflow. `auto_update_pull_request_branches.yml` does the updating instead, as
+  best effort and once `main` has been quiet for an hour after a push, so that a series of
+  merges is followed by one pass and not one per merge. The hour is a sleep at the start of
+  the run, which the next push cancels, and not a schedule, which GitHub started here every
+  few hours instead of hourly (#53). A merge Dependabot queues starts no workflow, so no wait
+  either: what it leaves behind is brought level after the next push made any other way. A
+  pull request that conflicts gets one comment saying so, deleted once the conflict is
+  resolved. The workflow leaves Dependabot's own pull requests to Dependabot: a rebase
+  pushed by anyone else strips the signature the auto-merge checks before it acts (#37). It
+  runs here because the repository is public and its minutes cost nothing, while a private
+  repository carries the same file switched off behind the `PULL_REQUESTS_UPDATE_ENABLED`
+  variable. Shared like the rule above (#35).
 - **The default branch is `main`.** Branch from it, target it. Other repositories of this
   owner still use `master`, and a pull request opened against a branch that does not exist
   here fails at the API call, after the work is done.
