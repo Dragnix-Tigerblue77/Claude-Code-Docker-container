@@ -245,7 +245,7 @@ That is the normal outcome when neither the followed npm channel nor the base im
 
 Issues and pull requests are welcome. A few conventions this repository holds to :
 
-- **Images are pinned**, never `:latest`. Reproducibility and the ability to roll back both depend on it.
+- **The Claude Code version is pinned, and `latest` moves on purpose.** Each image installs one exact version, each version is published once under an immutable `:<version>` tag, and that tag is the one to roll back to. [`CLAUDE.md`][link-to-claude-file] says why.
 - **Workflow files carry an SPDX header.**
 - **Pull requests are never opened as drafts.**
 - The default branch is `main`.
@@ -305,5 +305,6 @@ Copyright notices, attribution and the third-party terms that apply to the publi
 [link-to-commercial-license-file]: ./LICENSE-COMMERCIAL.md
 [link-to-notice-file]: ./NOTICE
 [link-to-contributing-file]: ./CONTRIBUTING.md
+[link-to-claude-file]: ./CLAUDE.md
 
 <p align="right">(<a href="#top">back to top</a>)</p>

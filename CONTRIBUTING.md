@@ -92,7 +92,7 @@ Do not add your own copyright line: the collective notice above already covers e
   ```
 
   The version it prints must be the one you asked for. The publication workflow makes the same check before it pushes anything, and finding out there rather than here costs a CI round trip.
-- **Keep every version pinned.** Nothing may be resolved at build time. An image whose contents depend on the day it was built cannot be reproduced, and cannot be rolled back to a known-good state.
+- **Keep the Claude Code version pinned.** It arrives as an exact build argument and is never resolved at build time : an image whose Claude Code depends on the day it was built cannot be reproduced, and cannot be rolled back to a known-good state. The base image tag is not pinned, on purpose : it floats so that Node's and Debian's security fixes arrive on their own, as the `Dockerfile` explains above its `FROM` line.
 - **Never bake a credential into the image.** Authentication is supplied at run time and lives in the mounted home directory — both `~/.claude/` and `~/.claude.json`, which sits beside it rather than inside it.
 - **Say why in the file.** The `Dockerfile` and the workflow here explain their own decisions in comments, at length and on purpose : each one is a place where the obvious change is the wrong one, and a comment is the only thing standing between the next reader and making it. A change that removes a reason removes the only record of it.
 - **Say which version of Claude Code and which base image tag you tested with.** The package moves quickly, and a report without that context cannot be reproduced.
