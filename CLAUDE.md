@@ -107,6 +107,22 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   drop it: the publishing workflow's own decision to rebuild reads labels back off the
   published image, and this one is how a human answers "which channel is this?" without
   guessing from a tag that no longer says.
+- **Images float by default, and are pinned on purpose only where a database would lose
+  its data.** An image is written with no tag at all -- `image: redis`, never
+  `image: redis:latest` and never a tag held in a variable: no tag *is* `latest`, writing
+  it out adds nothing, and a variable for it is a second place to keep in step with the
+  first. The deployer pulls on every run, so each deployment brings the current release
+  and its security fixes. The exception is a database -- PostgreSQL, MariaDB, MongoDB,
+  Qdrant -- whose data lives only in its own volume: a major bump lands on a layout the
+  new image does not read (PostgreSQL 18 moved its data directory, and starts on an empty
+  one), so it is a deliberate move, made after a dump. It is pinned to the major it was
+  initialised with, literally in the template, with the reason on the line above its
+  `image:`. Redis and Valkey hold a cache and float. A variant tag a service genuinely
+  needs is an exception of the same kind and says why in the same place.
+
+  This repository publishes the moving tag `latest`, the one a pull with no tag resolves
+  to, so the examples in the README, in this file and in the `Dockerfile` name the image
+  and no tag. The image holds no database, so nothing here is pinned on that account.
 - **Every workflow starts with the two SPDX lines**, before its `name:`, in the form used
   across this owner's repositories:
 
@@ -240,7 +256,7 @@ anyone suspects the mount. Mount the whole home directory:
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container
 ```
 
 This is why the `Dockerfile` declares no `VOLUME` at all: an anonymous volume on the wrong
