@@ -132,8 +132,8 @@ jobs:
         with:
           # Nothing after this pushes or fetches through git : the registry login
           # hands its token to docker directly, and the build reads the Dockerfile.
-          # So the token the action would leave in .git/config for every later
-          # step has no taker here
+          # So no later step of the job needs the job token the checkout sets up,
+          # and with this none can use it or read it
           persist-credentials: false
 
       # The digest has to be resolved BEFORE the build, because a label is baked
