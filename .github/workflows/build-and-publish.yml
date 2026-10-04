@@ -132,8 +132,8 @@ jobs:
         with:
           # Nothing after this pushes or fetches through git : the registry login
           # hands its token to docker directly, and the build reads the Dockerfile.
-          # So no later step of the job needs the job token the checkout sets up,
-          # and with this none can use it or read it
+          # So no later step needs the credential the checkout sets up, and with
+          # this it is removed right after the fetch and none inherits it
           persist-credentials: false
 
       # The digest has to be resolved BEFORE the build, because a label is baked
