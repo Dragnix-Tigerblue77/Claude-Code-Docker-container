@@ -141,6 +141,20 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
   instead; the rule is the same. What gets through is decided by the build, not by a guess
   about which ecosystem is risky: majors wait for a human, and so does anything red.
+- **A release is three days old before Dependabot proposes it, except for the base image.**
+  The auto-merge above is why: it merges a minor or patch update as soon as the build is
+  green, so without a delay a release published this morning, a compromised one included,
+  would be on `main` before anybody could notice and withdraw it, and the build, which
+  proves the image builds and runs, is no judge of that. `.github/dependabot.yml` gives
+  the `github-actions` entry `cooldown: default-days: 3`. That key is the only one the
+  `github-actions` and `docker` ecosystems take: `semver-major-days` and its siblings
+  exist for semver ecosystems such as pip and npm, which are not watched here. A
+  cooldown holds back version updates only, so a security update is never delayed by it.
+  The `docker` entry has none, on purpose, and says so in the file: it follows the base
+  image, every update it can raise is a Node major that waits for a human anyway, and
+  nothing merges unattended there for a delay to guard. Whoever adds an entry decides
+  which of the two it is. Dependabot reports a configuration error only on Insights >
+  Dependency graph > Dependabot, after the merge, so look there when this file changes.
 - **Pull requests are kept level with the default branch, and never required to be, in
   every repository of this owner.** "Require branches to be up to date before merging" stays
   off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:

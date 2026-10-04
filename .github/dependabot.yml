@@ -10,6 +10,14 @@
 # base image is a single FROM line, and the only update Dependabot can ever
 # propose for it is a major one, which is exactly the kind that wants a human.
 #
+# The actions' updates are held back for three days ("cooldown"). Auto-merge fuses
+# a minor or patch update by itself as soon as the build is green, so without a
+# delay a release published this morning, a compromised one included, would be
+# merged before anybody had time to notice and withdraw it. A cooldown holds back
+# version updates only ; security updates ignore it, so a fix for a known
+# vulnerability is not delayed. The base image entry is the one without a
+# cooldown, and says why where it is.
+#
 # What is deliberately NOT watched is written at the bottom of this file, so that
 # an absence reads as a decision rather than as an oversight.
 
@@ -23,6 +31,14 @@ updates:
     # still wait for a manual review
     schedule:
       interval: "daily"
+    # A release has to be three days old before Dependabot proposes it, which is
+    # what the auto-merge above would otherwise do within hours of its publication.
+    # "default-days" is the only key this ecosystem takes : the "semver-*-days" ones
+    # exist for semver ecosystems such as pip and npm, which are not watched here.
+    # Daily stays right with it : the schedule decides how soon a release is noticed
+    # once the three days are up
+    cooldown:
+      default-days: 3
     # Opening a pull request is the only way Dependabot reports anything, and it
     # stops opening them once this many are waiting - silently, naming nothing.
     # The default is 5, and it is reached more easily than it looks : majors come
@@ -53,6 +69,16 @@ updates:
     # offers for hearing about it
     schedule:
       interval: "daily"
+    # NO cooldown here, on purpose : this is the only entry in the file without one.
+    # It tracks the runtime base image of the Dockerfile, and the reason for the delay
+    # above has nothing to guard on it, since nothing it can propose merges unattended.
+    # The tag floats, so every update this entry can raise is a Node major, and a
+    # major waits for a human to check it against the base-image rule in CLAUDE.md. A
+    # delay would only hold back the news that a Node line has reached end of life. As
+    # for freshness of what is inside the image, it does not come through this entry at
+    # all : Node's patch releases land on the floating tag, and build-and-publish.yml
+    # rebuilds against it every day. Security updates ignore a cooldown anyway.
+    #
     # The limit is counted per entry, not shared with the one above, so it has to
     # be raised here too for the same reason it was raised there
     open-pull-requests-limit: 99
