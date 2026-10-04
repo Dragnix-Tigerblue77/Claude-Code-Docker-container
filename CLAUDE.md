@@ -134,45 +134,16 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
 - **Every `actions/checkout` sets `persist-credentials: false`, unless a later step of the
-  same job really authenticates through git.** By default the action writes the job's token
-  into `.git/config`, where every later step, and an upload of the workspace as an
-  artifact, can read it. Nothing here needs it: `build-and-publish.yml` logs in to the
-  registry by handing the token to `docker login`, `sign-off.yml` fetches its full history
-  during the checkout step itself, with the credential the action sets up for that step,
-  and only reads it afterwards, and `ruleset.yml` only reads files. The two workflows
-  without a checkout, `auto_update_pull_request_branches.yml` and
-  `dependabot-auto-merge.yml`, work through `gh` with a token of their own. A checkout
-  that has to keep the credential, because a later step pushes or fetches through git,
-  leaves it on and names that step in a comment beside it. zizmor's `artipacked` audit
-  fails a checkout that omits it, a low-severity finding included.
-- **Workflows are linted by actionlint and zizmor, both required, and neither reads anything
-  that moves.** `.github/workflows/lint-workflows.yml` reports them under the names of their
-  jobs, which are the contexts in `.github/rulesets/main.json`. That file is a record and not
-  the live setting: a check is required only once the file has been imported again under
-  Settings > Rules. The `pull_request` trigger has no `paths` filter, for the reason
-  `build-and-publish.yml` gives: a filtered workflow does not report a skipped check, it
-  reports nothing, and the pull request waits for it for ever. Both tools are pinned and
-  nothing bumps them, since Dependabot reads `uses:` lines and not these, so a newer release,
-  which usually knows more mistakes, is a deliberate edit that can turn a required check red
-  on a tree nobody touched. actionlint, v1.7.12, is installed with `go install`, whose
-  checksum database authenticates the module, and runs with `-shellcheck= -pyflakes=`:
-  those integrations would make the verdict depend on whichever versions the runner image
-  carries that week. zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the
-  manylinux wheel whose hash the step states, and runs `--offline`, because its online
-  audits ask advisory data that changes daily. A finding is fixed rather than ignored: no
-  audit is switched off, no threshold is lowered and no `# zizmor: ignore` comment exists.
-  What the configuration does state is deliberate. `.github/zizmor.yml` accepts actions on
-  a version tag, which is the maintainer's decision and not the tool's default of a commit
-  hash, and that is its only setting. The `dependabot-cooldown` audit runs at its default
-  threshold of seven days, which is the cooldown `.github/dependabot.yml` states, so it
-  fails an explicit value under seven and a missing block on the `github-actions` entry.
-  It is a partial check of that decision and not a pin: in a probe it did not flag a
-  `docker` entry without a block while the other entry had one, which is why that entry
-  carries its seven days explicitly. `.github/actionlint.yaml` ignores two messages, in one
-  workflow, about `actions/create-github-app-token@v3`: actionlint's built-in table of
-  action inputs predates the `client-id` input that action's `action.yml` has at `v3`. The
-  workflow is right and the table is stale, so drop the file when a bumped actionlint stops
-  reporting them.
+  same job really authenticates through git.** By default the action keeps the job's token
+  for the steps that follow. v7 writes it to a config file under `$RUNNER_TEMP` and points
+  the checked-out repository at it with `includeIf` entries, so any later step can use it,
+  or read it back through git, until the job's cleanup removes it. With the option off,
+  the action removes the credential when its own step ends, after it has fetched with it,
+  so no later step of the job can use or read the job token. Nothing here needs more: no
+  step pushes or fetches through git after a checkout, and the workflows that talk to
+  GitHub do it through `gh` with a token they are handed explicitly. A checkout that has
+  to keep the credential leaves it on and names, in a comment beside it, the step that
+  needs it.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the
