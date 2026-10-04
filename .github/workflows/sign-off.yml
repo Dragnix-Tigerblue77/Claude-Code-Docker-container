@@ -36,8 +36,8 @@ jobs:
           fetch-depth: 0
           # The history is fetched by this step itself, with the credential the
           # action sets up for it, and the script only reads what is already
-          # there. With this, no later step of the job can use that credential
-          # or read it
+          # there. With this the credential is removed right after that fetch,
+          # and no later step of the job inherits it
           persist-credentials: false
 
       # The two SHAs travel as environment variables rather than being
