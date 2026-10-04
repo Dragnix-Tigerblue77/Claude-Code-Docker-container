@@ -25,8 +25,9 @@ file is worth a second look before it is written.
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
-| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Both tools are pinned: actionlint has its shell and Python integrations off, and zizmor runs `--offline`, which drops its four audits that need the network |
+| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Both tools are pinned: actionlint has its shell and Python integrations off, and zizmor runs `--offline`, which drops five audits that need the network, and `--strict-collection`, so that a file it cannot read fails the run |
 | `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the one place this repository differs from its defaults, the version-tag policy; actionlint's ignores two false positives from its own action table, in one file |
+| `.github/check-lint-config.sh` | Fails a pull request whose lint is no longer configured as decided: the exact command line of each tool, the whole of its configuration file, no second file, and no inline `zizmor: ignore`. Each of the two lint jobs runs its own half |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
 
@@ -58,7 +59,8 @@ trip, which is the price of not having a daemon rather than a reason to skip the
 # What lint-workflows.yml does, from the repository root
 go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 "$(go env GOPATH)/bin/actionlint" -shellcheck= -pyflakes=
-zizmor --offline .      # installed as the workflow's own step does, hash-checked from PyPI
+zizmor --offline --strict-collection .   # installed as the workflow's own step does, hash-checked from PyPI
+.github/check-lint-config.sh actionlint  # and the same for zizmor: is the lint configured as decided?
 ```
 
 Neither needs a Docker daemon, and a cold install of both took about fifteen seconds. Run
@@ -313,11 +315,18 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   would make the verdict depend on whichever versions the runner image carries that week.
   zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the manylinux wheel
   whose hash the step states, and runs `--offline`, because its online audits ask advisory
-  data that changes daily. That drops four audits, `impostor-commit`,
-  `known-vulnerable-actions`, `ref-confusion` and `stale-action-refs`, the ones that ask
-  GitHub what a reference resolves to or whether an action has a published advisory. They
-  matter here, since the policy below accepts symbolic refs: a moved `v7` is caught by
-  none of what runs. Not everything the jobs read is pinned either. The runner image's Go
+  data that changes daily. That drops five audits, `impostor-commit`,
+  `known-vulnerable-actions`, `ref-confusion`, `stale-action-refs` and
+  `ref-version-mismatch` (`zizmor --offline -vv` lists them as skipped for want of a GitHub
+  API token; the documentation's table says four), the ones that ask GitHub what a
+  reference resolves to or whether an action has a published advisory. They matter here,
+  since the policy below accepts symbolic refs: a moved `v7` is caught by none of what
+  runs. The last one is about hash pins and their version comments, and there are none.
+  zizmor also runs with `--strict-collection`. Without it a file it cannot read, a
+  workflow that is not valid YAML or a `dependabot.yml` that does not match its schema, is
+  a warning and the run is green; actionlint fails an unparsable workflow by itself, but
+  zizmor is the only tool that reads `dependabot.yml`, so `default-days: "seven"` would
+  pass. Not everything the jobs read is pinned either. The runner image's Go
   and Python, `actions/checkout@v7` itself and the Go toolchain that actionlint's `go.mod`
   makes `go install` select all float, so "pinned" is a statement about the two tools and
   not about the whole job.
@@ -331,13 +340,24 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   workflows, which only a full-length commit SHA pin removes. zizmor's `artipacked` audit
   fails a checkout that omits `persist-credentials: false`, a low-severity finding
   included. Its `dependabot-cooldown` audit runs at its default threshold of seven days,
-  which is the cooldown `.github/dependabot.yml` states, but in 1.30.1 it judges only the
-  first `updates` entry and stops, so it is a partial check of that decision and not a pin.
-  `.github/actionlint.yaml` ignores two messages, in one workflow, about
-  `actions/create-github-app-token@v3`: actionlint's built-in table of action inputs
-  predates the `client-id` input that action's `action.yml` has at `v3`. The workflow is
-  right and the table is stale, so drop the file when a bumped actionlint stops reporting
-  them.
+  which is the cooldown `.github/dependabot.yml` states, but in 1.30.1 it stops at the
+  first `updates` entry that passes: the entries before it are judged and the ones after
+  it are not, so `[7, 3]` and `[7, none]` pass while `[3, 3]` flags both. It is a partial
+  check of that decision and not a pin. `.github/actionlint.yaml` ignores two messages, in
+  one workflow, about `actions/create-github-app-token@v3`: actionlint's built-in table of
+  action inputs predates the `client-id` input that action's `action.yml` has at `v3`. The
+  workflow is right and the table is stale, so drop the file when a bumped actionlint stops
+  reporting them.
+
+  What each tool lets through is therefore pinned by `.github/check-lint-config.sh`, run by
+  its own job: the exact command line (so `--offline`, `--strict-collection` and
+  `-shellcheck= -pyflakes=` cannot be dropped), the whole of its configuration file
+  without comments (so an ignore cannot be widened, added or aimed at another workflow,
+  and a threshold cannot be lowered), the absence of a second configuration file, and the
+  absence of an inline `zizmor: ignore`. Changing one of those is a change to the expected
+  text in that script in the same pull request, which is what puts it in front of a
+  reviewer. What the script cannot see is the tools themselves and the pins of their
+  versions.
 
 ## The authentication trap
 
