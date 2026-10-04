@@ -10,6 +10,19 @@
 # base image is a single FROM line, and the only update Dependabot can ever
 # propose for it is a major one, which is exactly the kind that wants a human.
 #
+# Both entries sit out a cooldown before a release is proposed, and the number
+# matters most on the first. Auto-merge fuses a minor or patch update by itself as
+# soon as the build is green, and a green build says nothing about whether the new
+# release can be trusted, so the delay is what keeps one published this morning, a
+# compromised one included, off main before anybody had time to notice and withdraw
+# it. Dependabot applies three days to version updates even when no cooldown is
+# configured, and its documentation calls that the default behaviour, which is what
+# the docker entry relies on. The github-actions entry states the same three days
+# instead, because a default is GitHub's to change and the delay in front of an
+# auto-merge should be a decision of this file and not something inherited. A
+# cooldown holds back version updates only ; security updates ignore it, so a fix
+# for a known vulnerability is not delayed.
+#
 # What is deliberately NOT watched is written at the bottom of this file, so that
 # an absence reads as a decision rather than as an oversight.
 
@@ -23,6 +36,15 @@ updates:
     # still wait for a manual review
     schedule:
       interval: "daily"
+    # Three days, which is what Dependabot applies when nothing is configured, and
+    # stated anyway : this is the delay in front of the auto-merge above, so it is
+    # written down here rather than left to a default GitHub can change.
+    # "default-days" is the only key this ecosystem takes : the "semver-*-days" ones
+    # exist for semver ecosystems such as pip and npm, which are not watched here.
+    # Daily stays right with it : the schedule decides how soon a release is noticed
+    # once the three days are up
+    cooldown:
+      default-days: 3
     # Opening a pull request is the only way Dependabot reports anything, and it
     # stops opening them once this many are waiting - silently, naming nothing.
     # The default is 5, and it is reached more easily than it looks : majors come
@@ -53,6 +75,17 @@ updates:
     # offers for hearing about it
     schedule:
       interval: "daily"
+    # No "cooldown" block here, on purpose, and this is the only entry without one.
+    # That is not "no delay" : Dependabot's default of three days applies to it all
+    # the same, and the key that exempts a dependency outright is "exclude", not the
+    # absence of a block. The number is simply not a decision on this entry. It follows
+    # the runtime base image, the tag floats, so every update it can raise is a Node
+    # major, and a major waits for a human to check it against the base-image rule in
+    # CLAUDE.md : nothing merges unattended here for a delay to guard. As for the
+    # freshness of the runtime, it does not come through this entry at all : Node's
+    # patch releases land on the floating tag, and build-and-publish.yml rebuilds
+    # against it every day.
+    #
     # The limit is counted per entry, not shared with the one above, so it has to
     # be raised here too for the same reason it was raised there
     open-pull-requests-limit: 99
