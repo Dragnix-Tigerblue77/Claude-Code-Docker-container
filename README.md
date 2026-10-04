@@ -84,7 +84,7 @@ docker pull ghcr.io/dragnix-tigerblue77/claude-code-docker-container
 The two names are separate settings, and either can be changed without touching code : `NPM_DIST_TAG` picks the npm channel the image is built from, `IMAGE_MOVING_TAG` picks the Docker tag it is published under. The channel a given image actually came from is recorded on it as a label, so you never have to guess :
 
 ```bash
-docker image inspect ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest \
+docker image inspect ghcr.io/dragnix-tigerblue77/claude-code-docker-container \
   --format '{{index .Config.Labels "io.github.dragnix-tigerblue77.claude-code.npm-dist-tag"}}'
 ```
 
@@ -99,7 +99,7 @@ docker image inspect ghcr.io/dragnix-tigerblue77/claude-code-docker-container:la
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container
 ```
 
 The entry point is `claude` itself, so anything you would pass to the command line goes at the end :
@@ -108,7 +108,7 @@ The entry point is `claude` itself, so anything you would pass to the command li
 docker run --rm -it \
   -v claude_home:/home/node \
   -v "$PWD:/workspace" \
-  ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest \
+  ghcr.io/dragnix-tigerblue77/claude-code-docker-container \
   --version
 ```
 
@@ -117,7 +117,7 @@ docker run --rm -it \
 ```yaml
 services:
   claude-code:
-    image: ghcr.io/dragnix-tigerblue77/claude-code-docker-container:latest
+    image: ghcr.io/dragnix-tigerblue77/claude-code-docker-container
     volumes:
       - claude_home:/home/node
       - ./:/workspace
