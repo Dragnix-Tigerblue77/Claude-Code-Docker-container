@@ -11,15 +11,26 @@
 # propose for it is a major one, which is exactly the kind that wants a human.
 #
 # Both entries hold a release back for seven days before it is proposed
-# ("cooldown"), where Dependabot's own default is three. Auto-merge fuses a minor or
-# patch update by itself as soon as the build is green, and a green build says
-# nothing about whether the new release can be trusted, so the delay is what keeps
-# one published this morning, a compromised one included, off main before anybody
-# had time to notice and withdraw it. A longer one gives the ecosystem more time to
-# notice and costs a week of waiting for an ordinary update. A cooldown holds back
-# version updates only ; security updates ignore it, so a fix for a known
-# vulnerability is never delayed. The number is the maintainer's to change, and it is
-# one number per entry.
+# ("cooldown"), where Dependabot's own default is three. The auto-merge of
+# .github/workflows/dependabot-auto-merge.yml merges a minor or patch update by itself
+# as soon as the build is green, and a green build says nothing about whether the new
+# release can be trusted : the delay is what keeps one published this morning, a
+# compromised one included, from being merged before anybody had time to notice and
+# withdraw it.
+#
+# What that covers today is narrower, and the limits are worth knowing. Every action is
+# pinned to a major tag, such as actions/checkout@v7, and Dependabot keeps the precision
+# of the ref it finds : it never proposes v7.x.y for an @v7 pin, only the next major,
+# which is never auto-merged and waits for a human. So the cooldown delays the proposal
+# of a major, and guards an unattended merge only once an entry gains a minor or patch
+# stream. It does not cover a floating tag at all : when an action's maintainer moves
+# v7, the workflows follow at once, with no pull request and so no delay, and only a pin
+# to a full-length commit SHA prevents that. The maintainer decided against that pin, and
+# this file does not change it.
+#
+# A cooldown holds back version updates only ; security updates ignore it, so a fix for a
+# known vulnerability is never delayed. Seven days is four more than the default, and the
+# number is the maintainer's to change : there is one per entry.
 #
 # What is deliberately NOT watched is written at the bottom of this file, so that
 # an absence reads as a decision rather than as an oversight.
@@ -34,12 +45,12 @@ updates:
     # still wait for a manual review
     schedule:
       interval: "daily"
-    # Seven days, against the three Dependabot applies when nothing is configured :
-    # this is the delay in front of the auto-merge above, so it is the one that is
-    # lengthened. "default-days" is the only key this ecosystem takes : the
-    # "semver-*-days" ones exist for semver ecosystems such as pip and npm, which are
-    # not watched here. Daily stays right with it : the schedule decides how soon a
-    # release is noticed once the seven days are up
+    # Seven days, against the three Dependabot applies when nothing is configured : the
+    # header says what that does and does not cover. "default-days" is the only duration
+    # key this ecosystem takes : the "semver-*-days" ones exist for semver ecosystems such
+    # as pip and npm, which are not watched here, and "include" and "exclude" only narrow
+    # a cooldown to chosen dependencies, which nothing needs. Daily stays right with it :
+    # the schedule decides how soon a release is noticed once the seven days are up
     cooldown:
       default-days: 7
     # Opening a pull request is the only way Dependabot reports anything, and it
@@ -67,19 +78,19 @@ updates:
   # image built from it is what they run.
   - package-ecosystem: "docker"
     directory: "/"
-    # Daily, like above. A base image is also how a CVE in the runtime reaches
-    # the published image, and a day is the shortest useful interval Dependabot
-    # offers for hearing about it
+    # Daily, like above : a day is the shortest useful interval Dependabot offers for
+    # hearing about a new Node major, which is all this entry can propose. A CVE in the
+    # current line does not come through here, see the comment on the cooldown below
     schedule:
       interval: "daily"
     # Seven days here too, although nothing this entry proposes merges unattended : it
     # follows the runtime base image, the tag floats, so every update it can raise is a
     # Node major, and a major waits for a human to check it against the base-image rule
-    # in CLAUDE.md. The number is not what protects it, and it costs nothing, since a
-    # Node line does not reach end of life by surprise. It is written out anyway, and
-    # not left to the default of three days, so that both entries read the same and
-    # the file has no exception to explain. The freshness of the runtime does not come
-    # through this entry at all : Node's patch releases land on the floating tag, and
+    # in CLAUDE.md. The number is not what protects it, and it costs little, since a Node
+    # line does not reach end of life by surprise. It is written out, and not left to the
+    # default of three days, so that both entries read the same and the file has no
+    # exception to explain. A CVE in the current line reaches the published image by
+    # another road : Node's patch releases land on the floating tag, and
     # build-and-publish.yml rebuilds against it every day
     cooldown:
       default-days: 7

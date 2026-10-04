@@ -141,24 +141,35 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
   instead; the rule is the same. What gets through is decided by the build, not by a guess
   about which ecosystem is risky: majors wait for a human, and so does anything red.
-- **A release is seven days old before Dependabot proposes it, on both entries.**
-  Dependabot's own default is three days, applied to version updates even when no
-  cooldown is configured, and `.github/dependabot.yml` lengthens it with `cooldown:
-  default-days: 7` on each entry. The `github-actions` one is what matters: its updates
-  are merged by the auto-merge above the moment the build is green, a green build says
-  nothing about whether a new release can be trusted, and the delay is what keeps one
-  published this morning, a compromised one included, off `main` before anybody could
-  notice and withdraw it. The `docker` entry has the same number although nothing it
-  proposes merges unattended, since every update it can raise is a Node major that waits
-  for a human: written out, it leaves the file with no exception to explain, and costs
-  nothing. A cooldown holds back version updates only, so a security update is never
-  delayed by it. The number is the maintainer's to change, and there is one per entry;
-  the key that exempts a dependency outright is `cooldown.exclude`, and the absence of a
-  block is not an exemption but the default of three. `default-days` is the only key
-  these two ecosystems take: `semver-major-days` and its siblings exist for semver
-  ecosystems such as pip and npm, which are not watched here. Dependabot reports a
-  configuration error only on Insights > Dependency graph > Dependabot, after the
-  merge, and not in CI, so look there when this file changes.
+- **A release is seven days old before Dependabot proposes it, on both entries, and that
+  covers less than it sounds like.** Dependabot's own default is three days, applied to
+  version updates even when no cooldown is configured, and `.github/dependabot.yml`
+  lengthens it with `cooldown: default-days: 7` on each entry, four days more than the
+  default. The auto-merge above merges a minor or patch update the moment the build is
+  green, and a green build says nothing about whether a new release can be trusted, so the
+  delay is what keeps one published this morning, a compromised one included, off `main`
+  before anybody could notice and withdraw it. Today it covers less than that. Every
+  action is pinned to a major tag, and Dependabot keeps the precision of the ref it finds:
+  it never proposes `v7.x.y` for an `@v7` pin, only the next major, which is never
+  auto-merged and waits for a human (both pull requests it has opened here were majors).
+  The cooldown therefore delays the proposal of a major, and guards an unattended merge
+  only once an entry gains a minor or patch stream. It does not cover a floating tag at
+  all: when an action's maintainer moves `v7`, the workflows follow at once, with no pull
+  request and so no delay, and only a pin to a full-length commit SHA prevents that. The
+  maintainer decided against that pin, and this invariant does not reopen it. The `docker`
+  entry has the same number although nothing it proposes merges unattended, since every
+  update it can raise is a Node major that waits for a human: written out, it leaves the
+  file with no exception to explain. A cooldown holds back version updates only, so a
+  security update is never delayed by it. The number is the maintainer's to change, and
+  there is one per entry. `default-days` is the only duration key these two ecosystems
+  take: `semver-major-days` and its siblings exist for semver ecosystems such as pip and
+  npm, which are not watched here, and `include` and `exclude` narrow a cooldown to chosen
+  dependencies. `exclude` is what exempts one outright; the absence of a block is the
+  default of three days, not an exemption. Dependabot validates the file on the pull
+  request itself, as the `.github/dependabot.yml` check run ("Dependabot config file
+  validation"), which catches a parse or schema error. What Dependabot then does with it
+  shows only on Insights > Dependency graph > Dependabot, after the merge, so look there
+  when this file changes.
 - **Pull requests are kept level with the default branch, and never required to be, in
   every repository of this owner.** "Require branches to be up to date before merging" stays
   off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:
