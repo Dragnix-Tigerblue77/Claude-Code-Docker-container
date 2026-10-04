@@ -141,20 +141,26 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
   instead; the rule is the same. What gets through is decided by the build, not by a guess
   about which ecosystem is risky: majors wait for a human, and so does anything red.
-- **A release is three days old before Dependabot proposes it, except for the base image.**
-  The auto-merge above is why: it merges a minor or patch update as soon as the build is
-  green, so without a delay a release published this morning, a compromised one included,
-  would be on `main` before anybody could notice and withdraw it, and the build, which
-  proves the image builds and runs, is no judge of that. `.github/dependabot.yml` gives
-  the `github-actions` entry `cooldown: default-days: 3`. That key is the only one the
-  `github-actions` and `docker` ecosystems take: `semver-major-days` and its siblings
-  exist for semver ecosystems such as pip and npm, which are not watched here. A
+- **A release is three days old before Dependabot proposes it, and the file says so on the
+  entry that matters.** Dependabot applies a three-day cooldown to version updates even
+  when none is configured, and its documentation calls that the default behaviour. The
+  `github-actions` entry of `.github/dependabot.yml` states it anyway, `cooldown:
+  default-days: 3`, because that is the entry whose updates the auto-merge above merges
+  the moment the build is green, a green build says nothing about whether a new release
+  can be trusted, and the delay in front of an unattended merge should be a decision of
+  this file rather than a default GitHub can change. The line changes nothing today,
+  since it equals the default; what it buys is that a change of the default cannot
+  silently shorten the delay, and a bigger margin is a number to change there. The
+  `docker` entry carries no `cooldown` block, on purpose, and that is not "no delay": the
+  default still applies to it, and the key that exempts a dependency outright is
+  `cooldown.exclude`, not the absence of a block. The number is simply not a decision
+  there, because it follows the base image, every update it can raise is a Node major
+  that waits for a human, and nothing merges unattended for a delay to guard.
+  `default-days` is the only key these two ecosystems take: `semver-major-days` and its
+  siblings exist for semver ecosystems such as pip and npm, which are not watched here. A
   cooldown holds back version updates only, so a security update is never delayed by it.
-  The `docker` entry has none, on purpose, and says so in the file: it follows the base
-  image, every update it can raise is a Node major that waits for a human anyway, and
-  nothing merges unattended there for a delay to guard. Whoever adds an entry decides
-  which of the two it is. Dependabot reports a configuration error only on Insights >
-  Dependency graph > Dependabot, after the merge, so look there when this file changes.
+  Dependabot reports a configuration error only on Insights > Dependency graph >
+  Dependabot, after the merge, so look there when this file changes.
 - **Pull requests are kept level with the default branch, and never required to be, in
   every repository of this owner.** "Require branches to be up to date before merging" stays
   off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:

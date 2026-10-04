@@ -10,13 +10,18 @@
 # base image is a single FROM line, and the only update Dependabot can ever
 # propose for it is a major one, which is exactly the kind that wants a human.
 #
-# The actions' updates are held back for three days ("cooldown"). Auto-merge fuses
-# a minor or patch update by itself as soon as the build is green, so without a
-# delay a release published this morning, a compromised one included, would be
-# merged before anybody had time to notice and withdraw it. A cooldown holds back
-# version updates only ; security updates ignore it, so a fix for a known
-# vulnerability is not delayed. The base image entry is the one without a
-# cooldown, and says why where it is.
+# Both entries sit out a cooldown before a release is proposed, and the number
+# matters most on the first. Auto-merge fuses a minor or patch update by itself as
+# soon as the build is green, and a green build says nothing about whether the new
+# release can be trusted, so the delay is what keeps one published this morning, a
+# compromised one included, off main before anybody had time to notice and withdraw
+# it. Dependabot applies three days to version updates even when no cooldown is
+# configured, and its documentation calls that the default behaviour, which is what
+# the docker entry relies on. The github-actions entry states the same three days
+# instead, because a default is GitHub's to change and the delay in front of an
+# auto-merge should be a decision of this file and not something inherited. A
+# cooldown holds back version updates only ; security updates ignore it, so a fix
+# for a known vulnerability is not delayed.
 #
 # What is deliberately NOT watched is written at the bottom of this file, so that
 # an absence reads as a decision rather than as an oversight.
@@ -31,8 +36,9 @@ updates:
     # still wait for a manual review
     schedule:
       interval: "daily"
-    # A release has to be three days old before Dependabot proposes it, which is
-    # what the auto-merge above would otherwise do within hours of its publication.
+    # Three days, which is what Dependabot applies when nothing is configured, and
+    # stated anyway : this is the delay in front of the auto-merge above, so it is
+    # written down here rather than left to a default GitHub can change.
     # "default-days" is the only key this ecosystem takes : the "semver-*-days" ones
     # exist for semver ecosystems such as pip and npm, which are not watched here.
     # Daily stays right with it : the schedule decides how soon a release is noticed
@@ -69,15 +75,16 @@ updates:
     # offers for hearing about it
     schedule:
       interval: "daily"
-    # NO cooldown here, on purpose : this is the only entry in the file without one.
-    # It tracks the runtime base image of the Dockerfile, and the reason for the delay
-    # above has nothing to guard on it, since nothing it can propose merges unattended.
-    # The tag floats, so every update this entry can raise is a Node major, and a
-    # major waits for a human to check it against the base-image rule in CLAUDE.md. A
-    # delay would only hold back the news that a Node line has reached end of life. As
-    # for freshness of what is inside the image, it does not come through this entry at
-    # all : Node's patch releases land on the floating tag, and build-and-publish.yml
-    # rebuilds against it every day. Security updates ignore a cooldown anyway.
+    # No "cooldown" block here, on purpose, and this is the only entry without one.
+    # That is not "no delay" : Dependabot's default of three days applies to it all
+    # the same, and the key that exempts a dependency outright is "exclude", not the
+    # absence of a block. The number is simply not a decision on this entry. It follows
+    # the runtime base image, the tag floats, so every update it can raise is a Node
+    # major, and a major waits for a human to check it against the base-image rule in
+    # CLAUDE.md : nothing merges unattended here for a delay to guard. As for the
+    # freshness of the runtime, it does not come through this entry at all : Node's
+    # patch releases land on the floating tag, and build-and-publish.yml rebuilds
+    # against it every day.
     #
     # The limit is counted per entry, not shared with the one above, so it has to
     # be raised here too for the same reason it was raised there
