@@ -210,12 +210,19 @@ jobs:
 
           echo "Base image ${name} currently resolves to ${digest}."
 
+      # Both values reach the script as environment variables and not as ${{ }} text
+      # pasted into it : the actor is a name somebody chose, and a command line that is
+      # assembled from such a value is the shape that goes wrong the day it contains a
+      # quote. Nothing about the login changes, the token still goes in by stdin
       - name: Log in to ghcr.io
         if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
-            | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
+          printf '%s' "$REGISTRY_PASSWORD" \
+            | docker login ghcr.io --username "$REGISTRY_USERNAME" --password-stdin
 
       # The one place a wrong answer is expensive in both directions. Saying
       # "nothing to do" when the base moved leaves a fixed vulnerability

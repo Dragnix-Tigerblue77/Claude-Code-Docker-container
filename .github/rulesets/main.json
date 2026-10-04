@@ -35,6 +35,14 @@
           {
             "context": "Check the ruleset names jobs that exist",
             "integration_id": 15368
+          },
+          {
+            "context": "actionlint",
+            "integration_id": 15368
+          },
+          {
+            "context": "zizmor",
+            "integration_id": 15368
           }
         ]
       }

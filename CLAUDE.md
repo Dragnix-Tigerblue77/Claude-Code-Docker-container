@@ -25,6 +25,8 @@ file is worth a second look before it is written.
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
+| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Each tool is pinned and reads nothing that moves: actionlint has its shell and Python integrations off, and zizmor runs `--offline` |
+| `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the two places this repository differs from its defaults; actionlint's ignores two false positives from its own action table, in one file |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
 
@@ -49,6 +51,19 @@ exits 0 whatever docker did, because the status is the pipe's last command. Noth
 by leaving it out where it cannot run, since the workflow builds the image and runs it on
 every pull request touching the `Dockerfile` or the workflow itself. It costs a CI round
 trip, which is the price of not having a daemon rather than a reason to skip the check.
+
+### Lint
+
+```bash
+# What lint-workflows.yml does, from the repository root
+go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+"$(go env GOPATH)/bin/actionlint" -shellcheck= -pyflakes=
+zizmor --offline .      # installed as the workflow's own step does, hash-checked from PyPI
+```
+
+Neither needs a Docker daemon, and a cold install of both took about fifteen seconds. Run
+them on any change to a workflow or to `.github/dependabot.yml`: they are required checks,
+so a finding found here saves a CI round trip.
 
 ## Invariants
 
@@ -128,7 +143,35 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   without a checkout, `auto_update_pull_request_branches.yml` and
   `dependabot-auto-merge.yml`, work through `gh` with a token of their own. A checkout
   that has to keep the credential, because a later step pushes or fetches through git,
-  leaves it on and names that step in a comment beside it.
+  leaves it on and names that step in a comment beside it. zizmor's `artipacked` audit
+  fails a checkout that omits it, a low-severity finding included.
+- **Workflows are linted by actionlint and zizmor, both required, and neither reads anything
+  that moves.** `.github/workflows/lint-workflows.yml` reports them under the names of their
+  jobs, which are the contexts in `.github/rulesets/main.json`. That file is a record and not
+  the live setting: a check is required only once the file has been imported again under
+  Settings > Rules. The `pull_request` trigger has no `paths` filter, for the reason
+  `build-and-publish.yml` gives: a filtered workflow does not report a skipped check, it
+  reports nothing, and the pull request waits for it for ever. Both tools are pinned and
+  nothing bumps them, since Dependabot reads `uses:` lines and not these, so a newer release,
+  which usually knows more mistakes, is a deliberate edit that can turn a required check red
+  on a tree nobody touched. actionlint, v1.7.12, is installed with `go install`, whose
+  checksum database authenticates the module, and runs with `-shellcheck= -pyflakes=`:
+  those integrations would make the verdict depend on whichever versions the runner image
+  carries that week. zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the
+  manylinux wheel whose hash the step states, and runs `--offline`, because its online
+  audits ask advisory data that changes daily. A finding is fixed rather than ignored: no
+  audit is switched off and no `# zizmor: ignore` comment exists. What the configuration
+  does state is deliberate. `.github/zizmor.yml` accepts actions on a version tag, which is
+  the maintainer's decision and not the tool's default of a commit hash, and sets the
+  `dependabot-cooldown` threshold to three days, the decision in `.github/dependabot.yml`,
+  where the tool asks for seven. Its audit treats a missing cooldown as Dependabot's
+  three-day default, so at that threshold it fails an explicit value under three and
+  nothing else: it does not pin the line the `github-actions` entry carries.
+  `.github/actionlint.yaml` ignores two messages, in one workflow, about
+  `actions/create-github-app-token@v3`: actionlint's built-in table of action inputs
+  predates the `client-id` input that action's `action.yml` has at `v3`. The workflow is
+  right and the table is stale, so drop the file when a bumped actionlint stops reporting
+  them.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the
@@ -286,7 +329,13 @@ commit authored under the agent it writes precisely the shape the Sign-off check
 The hook is repository-local, best-effort and never blocks a session: if it cannot set the
 alias it says so and tells you the `--trailer` form to pass by hand.
 
-If a lint ever gates pull requests -- `hadolint` on the `Dockerfile`, `actionlint` or
-`yamllint` on the workflow -- installing it in this same hook is the way to keep those
+If a lint gates pull requests, installing it in this same hook is the way to keep its
 findings out of a CI round trip, on the terms the hook already keeps: only in a remote
-session, best effort, and a failure reported rather than blocking the session.
+session, best effort, and a failure reported rather than blocking the session. Two do now,
+actionlint and zizmor on the workflows, and the hook does not install them yet. A cold
+install of both took about fifteen seconds, half of the 30-second timeout
+`.claude/settings.json` gives the hook, and a hook that overruns it stops standing up
+`git signoff`, which is what it is there for. Moving them in is therefore a change to make
+together with that timeout, not a line to append; until then, the commands under
+[Lint](#lint) are the way. `hadolint` on the `Dockerfile` or `yamllint` would be the same
+decision.

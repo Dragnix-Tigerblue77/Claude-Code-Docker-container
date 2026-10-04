@@ -1,0 +1,102 @@
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: lint-workflows
+
+# The workflows here are code, with a lot of shell in them and some of it running with
+# a token that can write packages or merge pull requests, and nothing used to read
+# them before they ran. Two tools do, and they ask different questions :
+#
+#  * actionlint reads for mistakes : a syntax or expression error, a context that does
+#    not exist, an input an action does not take. Without it, that is found when the
+#    workflow runs, which for the publishing path of build-and-publish.yml and for
+#    auto_update_pull_request_branches.yml means after the merge.
+#  * zizmor reads for security : an expression expanded into a script, a token that
+#    stays on disk, a permission wider than the job needs, an action referenced in a
+#    way the policy does not allow. Its configuration is .github/zizmor.yml, which
+#    says why the two settings it carries are not the tool's defaults.
+#
+# Both are REQUIRED status checks (.github/rulesets/main.json), reported under the names
+# of their jobs, "actionlint" and "zizmor", which is why they are two jobs and not two
+# steps : a failing one should say which of the two it is without opening the log.
+#
+# No paths filter on the pull_request trigger, for the reason build-and-publish.yml
+# gives : a required check that a filter makes disappear does not report as skipped, it
+# does not report at all, and the pull request waits for it for ever.
+#
+# Both tools are pinned, and nothing bumps the pins : Dependabot's github-actions
+# ecosystem reads "uses:" lines and not these. Moving one is a deliberate edit, and it is
+# a bigger one than it looks, since a newer release usually knows more mistakes than the
+# last and can turn a required check red on a tree nobody touched.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The pattern build-and-publish.yml uses : a pull request run is throwaway, so a newer
+# push supersedes an older one. A run started by hand is left alone
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Built from source with the Go toolchain the runner already has, which is also
+      # why this needs no download of a release asset : the Go checksum database
+      # authenticates the module, so a tag that was moved or a proxy that was
+      # tampered with fails the install instead of being run
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      # The shellcheck and pyflakes integrations are off on purpose. With them on, the
+      # result depends on whichever versions of those two tools the runner image
+      # happens to carry that week, and a required check must not change its verdict
+      # for a reason no pull request caused. The shell in the workflows is read by
+      # zizmor for what it expands, and nothing here gates its style
+      - name: Lint the workflows
+        run: '"$(go env GOPATH)/bin/actionlint" -shellcheck= -pyflakes='
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Installed from PyPI with its hash checked : pip refuses the file unless its
+      # sha256 is the one below, which is the manylinux_2_28 x86_64 wheel of this
+      # version as PyPI's JSON API lists it. The hash can only be given in a
+      # requirements file, so the step writes one. A wheel and nothing built from
+      # source, so no build backend runs on the runner either
+      - name: Install zizmor
+        env:
+          ZIZMOR_VERSION: "1.30.1"
+          ZIZMOR_WHEEL_SHA256: "eee12266b793cb87ad4a7e3af2e72404f8a63e3de5eb099b80bf7b1cfd232a8e"
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/zizmor"
+          printf 'zizmor==%s --hash=sha256:%s\n' "$ZIZMOR_VERSION" "$ZIZMOR_WHEEL_SHA256" \
+            > "$RUNNER_TEMP/zizmor-requirements.txt"
+          "$RUNNER_TEMP/zizmor/bin/pip" install --require-hashes --only-binary :all: \
+            --requirement "$RUNNER_TEMP/zizmor-requirements.txt"
+
+      # Offline, so that only the audits that read this repository run. The online ones
+      # ask GitHub's advisory data and the tags of the actions in use, which change daily,
+      # and would turn a required check red on a pull request that touched nothing. The
+      # annotations land on the lines they are about
+      - name: Audit the workflows
+        run: '"$RUNNER_TEMP/zizmor/bin/zizmor" --offline --format github .'
