@@ -25,7 +25,7 @@ file is worth a second look before it is written.
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
-| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Each tool is pinned and reads nothing that moves: actionlint has its shell and Python integrations off, and zizmor runs `--offline` |
+| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Both tools are pinned: actionlint has its shell and Python integrations off, and zizmor runs `--offline`, which drops its four audits that need the network |
 | `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the one place this repository differs from its defaults, the version-tag policy; actionlint's ignores two false positives from its own action table, in one file |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
@@ -281,6 +281,46 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   edited issue takes a name back once it is out. "A private repository of this owner" is
   as specific as a reference to one gets. Naming the public `Dragnix-Tigerblue77`
   organisation is fine. Shared like the rules above (#47, #50).
+- **Workflows are linted by actionlint and zizmor, both required, with pinned tools and
+  without the audits that need the network.** `.github/workflows/lint-workflows.yml`
+  reports them under the names of their jobs, which are the contexts in
+  `.github/rulesets/main.json`. That file is a record and not the live setting: a check is
+  required only once the file has been imported again under Settings > Rules. The
+  `pull_request` trigger has no `paths` filter, for the reason `build-and-publish.yml`
+  gives: a filtered workflow does not report a skipped check, it reports nothing, and the
+  pull request waits for it for ever. Both tools are pinned and nothing bumps them, since
+  Dependabot reads `uses:` lines and not these, so a newer release, which usually knows
+  more mistakes, is a deliberate edit that can turn a required check red on a tree nobody
+  touched. actionlint, v1.7.12, is installed with `go install`, whose checksum database
+  authenticates the module, and runs with `-shellcheck= -pyflakes=`: those integrations
+  would make the verdict depend on whichever versions the runner image carries that week.
+  zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the manylinux wheel
+  whose hash the step states, and runs `--offline`, because its online audits ask advisory
+  data that changes daily. That drops four audits, `impostor-commit`,
+  `known-vulnerable-actions`, `ref-confusion` and `stale-action-refs`, the ones that ask
+  GitHub what a reference resolves to or whether an action has a published advisory. They
+  matter here, since the policy below accepts symbolic refs: a moved `v7` is caught by
+  none of what runs. Not everything the jobs read is pinned either. The runner image's Go
+  and Python, `actions/checkout@v7` itself and the Go toolchain that actionlint's `go.mod`
+  makes `go install` select all float, so "pinned" is a statement about the two tools and
+  not about the whole job.
+
+  A finding is fixed rather than ignored: no audit is switched off, no threshold is lowered
+  and no `# zizmor: ignore` comment exists. What the configuration does state is
+  deliberate. `.github/zizmor.yml` accepts actions on a version tag, which is the
+  maintainer's decision and not the tool's default of a commit hash, and that is its only
+  setting. It accepts a risk and does not remove it: Dependabot follows the major tag and
+  proposes the next major, and nothing sits between a maintainer moving the tag and the
+  workflows, which only a full-length commit SHA pin removes. zizmor's `artipacked` audit
+  fails a checkout that omits `persist-credentials: false`, a low-severity finding
+  included. Its `dependabot-cooldown` audit runs at its default threshold of seven days,
+  which is the cooldown `.github/dependabot.yml` states, but in 1.30.1 it judges only the
+  first `updates` entry and stops, so it is a partial check of that decision and not a pin.
+  `.github/actionlint.yaml` ignores two messages, in one workflow, about
+  `actions/create-github-app-token@v3`: actionlint's built-in table of action inputs
+  predates the `client-id` input that action's `action.yml` has at `v3`. The workflow is
+  right and the table is stale, so drop the file when a bumped actionlint stops reporting
+  them.
 
 ## The authentication trap
 

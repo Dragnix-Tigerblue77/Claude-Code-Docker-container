@@ -183,8 +183,10 @@ jobs:
           # The three permissions the header says the update needs, and nothing else the
           # App may have been granted : left out, the token carries every permission of
           # the installation, which is what this job never uses and a leaked token
-          # would give away. A permission asked for here that the App was not granted
-          # fails the minting step, so the run goes red rather than working with less
+          # would give away. An installation that lacks one of these three makes the
+          # minting step fail, on every run, where a missing "workflows" used to fail only
+          # an update that touched workflow files : the App's settings are what to check
+          # when this step goes red
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write

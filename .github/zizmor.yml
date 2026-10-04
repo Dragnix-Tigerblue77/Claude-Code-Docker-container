@@ -10,10 +10,11 @@ rules:
       policies:
         # Actions are referenced by a version tag, such as actions/checkout@v7, and not by
         # a commit hash, which is the tool's default for every action. That is the
-        # maintainer's decision : a major tag is what Dependabot's github-actions entry
-        # follows, and the minor and patch updates behind it are what the cooldown in
-        # .github/dependabot.yml holds back for seven days before they are proposed.
-        # "ref-pin" accepts any symbolic ref, a branch name included, so what keeps the
-        # refs on version tags is review and Dependabot, which follows them, and not
-        # this audit
+        # maintainer's decision, and it accepts a risk without removing it : Dependabot
+        # follows the major tag and proposes only the next major, and when an action's
+        # maintainer moves the tag itself the workflows follow at once, with no pull
+        # request and no delay. Only a full-length commit SHA pin prevents that, and the
+        # cooldown in .github/dependabot.yml does not touch it. "ref-pin" accepts any
+        # symbolic ref, a branch name included, so what keeps the refs on version tags is
+        # review, and not this audit
         "*": ref-pin

@@ -27,7 +27,16 @@ name: lint-workflows
 # Both tools are pinned, and nothing bumps the pins : Dependabot's github-actions
 # ecosystem reads "uses:" lines and not these. Moving one is a deliberate edit, and it is
 # a bigger one than it looks, since a newer release usually knows more mistakes than the
-# last and can turn a required check red on a tree nobody touched.
+# last and can turn a required check red on a tree nobody touched. Pinned is a statement
+# about the two tools, not about the whole job : the runner image's Go and Python,
+# actions/checkout@v7 and the Go toolchain that actionlint's go.mod makes "go install"
+# select all float.
+#
+# zizmor runs offline, which drops four of its audits : impostor-commit,
+# known-vulnerable-actions, ref-confusion and stale-action-refs. They are the ones that ask
+# GitHub what a reference resolves to or whether an action has a published advisory, so a
+# tag that was moved, which the version-tag policy of .github/zizmor.yml accepts, is
+# something none of this catches.
 on:
   pull_request:
   workflow_dispatch:
@@ -35,8 +44,9 @@ on:
 permissions:
   contents: read
 
-# The pattern build-and-publish.yml uses : a pull request run is throwaway, so a newer
-# push supersedes an older one. A run started by hand is left alone
+# The pattern build-and-publish.yml uses : only a pull request run is cancelled when a
+# newer one starts in its group, since it is throwaway and the newer push supersedes it.
+# A run started by hand is left alone
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -94,9 +104,9 @@ jobs:
           "$RUNNER_TEMP/zizmor/bin/pip" install --require-hashes --only-binary :all: \
             --requirement "$RUNNER_TEMP/zizmor-requirements.txt"
 
-      # Offline, so that only the audits that read this repository run. The online ones
-      # ask GitHub's advisory data and the tags of the actions in use, which change daily,
-      # and would turn a required check red on a pull request that touched nothing. The
-      # annotations land on the lines they are about
+      # Offline, so that only the audits that read this repository run. The four online
+      # ones, named in the header, ask GitHub's advisory data and what the references in
+      # use resolve to, which change daily, and would turn a required check red on a pull
+      # request that touched nothing. The annotations land on the lines they are about
       - name: Audit the workflows
         run: '"$RUNNER_TEMP/zizmor/bin/zizmor" --offline --format github .'
