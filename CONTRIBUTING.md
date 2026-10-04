@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container contributors
+SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
@@ -74,7 +74,7 @@ If you are a contributor rather than the maintainer, none of this concerns you :
 Every file that can carry a comment carries a two-line [SPDX](https://spdx.dev/) header. In the `Dockerfile`, in the workflows and in any shell script:
 
 ```bash
-# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container contributors
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
 # SPDX-License-Identifier: AGPL-3.0-only
 ```
 

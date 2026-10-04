@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container contributors
+SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
 SPDX-License-Identifier: AGPL-3.0-only
 -->
 
