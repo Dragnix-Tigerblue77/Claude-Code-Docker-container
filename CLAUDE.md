@@ -26,7 +26,7 @@ file is worth a second look before it is written.
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
 | `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Each tool is pinned and reads nothing that moves: actionlint has its shell and Python integrations off, and zizmor runs `--offline` |
-| `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the two places this repository differs from its defaults; actionlint's ignores two false positives from its own action table, in one file |
+| `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the one place this repository differs from its defaults, the version-tag policy; actionlint's ignores two false positives from its own action table, in one file |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
 
@@ -160,18 +160,19 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   carries that week. zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the
   manylinux wheel whose hash the step states, and runs `--offline`, because its online
   audits ask advisory data that changes daily. A finding is fixed rather than ignored: no
-  audit is switched off and no `# zizmor: ignore` comment exists. What the configuration
-  does state is deliberate. `.github/zizmor.yml` accepts actions on a version tag, which is
-  the maintainer's decision and not the tool's default of a commit hash, and sets the
-  `dependabot-cooldown` threshold to three days, the decision in `.github/dependabot.yml`,
-  where the tool asks for seven. Its audit treats a missing cooldown as Dependabot's
-  three-day default, so at that threshold it fails an explicit value under three and
-  nothing else: it does not pin the line the `github-actions` entry carries.
-  `.github/actionlint.yaml` ignores two messages, in one workflow, about
-  `actions/create-github-app-token@v3`: actionlint's built-in table of action inputs
-  predates the `client-id` input that action's `action.yml` has at `v3`. The workflow is
-  right and the table is stale, so drop the file when a bumped actionlint stops reporting
-  them.
+  audit is switched off, no threshold is lowered and no `# zizmor: ignore` comment exists.
+  What the configuration does state is deliberate. `.github/zizmor.yml` accepts actions on
+  a version tag, which is the maintainer's decision and not the tool's default of a commit
+  hash, and that is its only setting. The `dependabot-cooldown` audit runs at its default
+  threshold of seven days, which is the cooldown `.github/dependabot.yml` states, so it
+  fails an explicit value under seven and a missing block on the `github-actions` entry.
+  It is a partial check of that decision and not a pin: in a probe it did not flag a
+  `docker` entry without a block while the other entry had one, which is why that entry
+  carries its seven days explicitly. `.github/actionlint.yaml` ignores two messages, in one
+  workflow, about `actions/create-github-app-token@v3`: actionlint's built-in table of
+  action inputs predates the `client-id` input that action's `action.yml` has at `v3`. The
+  workflow is right and the table is stale, so drop the file when a bumped actionlint stops
+  reporting them.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the

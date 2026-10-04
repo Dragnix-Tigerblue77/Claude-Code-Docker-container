@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # Read by the "zizmor" job of .github/workflows/lint-workflows.yml, which finds it here
-# by itself. Two settings, each a decision about where this repository differs from the
-# tool's defaults, and nothing else : no audit is switched off.
+# by itself. One setting, a decision about where this repository differs from the tool's
+# defaults, and nothing else : no audit is switched off, and no threshold is lowered.
 rules:
   unpinned-uses:
     config:
@@ -12,15 +12,8 @@ rules:
         # a commit hash, which is the tool's default for every action. That is the
         # maintainer's decision : a major tag is what Dependabot's github-actions entry
         # follows, and the minor and patch updates behind it are what the cooldown in
-        # .github/dependabot.yml holds back for three days before they are proposed.
+        # .github/dependabot.yml holds back for seven days before they are proposed.
         # "ref-pin" accepts any symbolic ref, a branch name included, so what keeps the
         # refs on version tags is review and Dependabot, which follows them, and not
         # this audit
         "*": ref-pin
-  dependabot-cooldown:
-    config:
-      # The audit asks for a cooldown of seven days at least, where this repository
-      # decided on three, which is also what Dependabot applies when none is configured.
-      # The setting is the lowest value the audit accepts, so it follows that decision
-      # and has to move with it
-      days: 3

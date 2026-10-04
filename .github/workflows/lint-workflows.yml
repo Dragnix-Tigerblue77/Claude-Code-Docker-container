@@ -14,7 +14,7 @@ name: lint-workflows
 #  * zizmor reads for security : an expression expanded into a script, a token that
 #    stays on disk, a permission wider than the job needs, an action referenced in a
 #    way the policy does not allow. Its configuration is .github/zizmor.yml, which
-#    says why the two settings it carries are not the tool's defaults.
+#    says why the one setting it carries is not the tool's default.
 #
 # Both are REQUIRED status checks (.github/rulesets/main.json), reported under the names
 # of their jobs, "actionlint" and "zizmor", which is why they are two jobs and not two
