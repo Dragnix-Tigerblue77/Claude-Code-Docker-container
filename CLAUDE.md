@@ -25,6 +25,9 @@ file is worth a second look before it is written.
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |
+| `.github/workflows/lint-workflows.yml` | The **actionlint** and **zizmor** checks, both required. Both tools are pinned: actionlint has its shell and Python integrations off, and zizmor runs `--offline`, which drops five audits that need the network, and `--strict-collection`, so that a file it cannot read fails the run |
+| `.github/zizmor.yml`, `.github/actionlint.yaml` | Their configuration, which each tool finds where it is. zizmor's states the one place this repository differs from its defaults, the version-tag policy; actionlint's ignores two false positives from its own action table, in one file |
+| `.github/check-lint-config.sh` | Fails a pull request whose lint is no longer configured as decided: the exact command line of each tool, the whole of its configuration file, no second file, and no inline `zizmor: ignore`. Each of the two lint jobs runs its own half |
 | `README.md` | What the image is and how to run it |
 | `LICENSE` | AGPL-3.0-only |
 
@@ -49,6 +52,20 @@ exits 0 whatever docker did, because the status is the pipe's last command. Noth
 by leaving it out where it cannot run, since the workflow builds the image and runs it on
 every pull request touching the `Dockerfile` or the workflow itself. It costs a CI round
 trip, which is the price of not having a daemon rather than a reason to skip the check.
+
+### Lint
+
+```bash
+# What lint-workflows.yml does, from the repository root
+go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+"$(go env GOPATH)/bin/actionlint" -shellcheck= -pyflakes=
+zizmor --offline --strict-collection .   # installed as the workflow's own step does, hash-checked from PyPI
+.github/check-lint-config.sh actionlint  # and the same for zizmor: is the lint configured as decided?
+```
+
+Neither needs a Docker daemon, and a cold install of both took about fifteen seconds. Run
+them on any change to a workflow or to `.github/dependabot.yml`: they are required checks,
+so a finding found here saves a CI round trip.
 
 ## Invariants
 
@@ -134,6 +151,18 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
+- **Every `actions/checkout` sets `persist-credentials: false`, unless a later step of the
+  same job really authenticates through git.** By default the action keeps the job's token
+  for the steps that follow. v7 writes it to a config file under `$RUNNER_TEMP` and points
+  the checked-out repository at it with `includeIf` entries, so any later step can use it,
+  or read it back through git, until the job's cleanup removes it. With the option off,
+  the action removes the credential it set up when its own step ends, right after it has
+  fetched with it, so no later step inherits it. That removes the copy the checkout
+  leaves behind and not the token: a step that names `secrets.GITHUB_TOKEN`, as the
+  registry login does, still has it. Nothing here needs more: no step pushes or fetches
+  through git after a checkout, and the workflows that talk to GitHub do it through `gh`
+  with a token they are handed explicitly. A checkout that has to keep the credential
+  leaves it on and names, in a comment beside it, the step that needs it.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the
@@ -157,6 +186,35 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   A private repository, where GitHub enforces no ruleset, does the waiting in its own workflow
   instead; the rule is the same. What gets through is decided by the build, not by a guess
   about which ecosystem is risky: majors wait for a human, and so does anything red.
+- **A release is seven days old before Dependabot proposes it, on both entries, and that
+  covers less than it sounds like.** Dependabot's own default is three days, applied to
+  version updates even when no cooldown is configured, and `.github/dependabot.yml`
+  lengthens it with `cooldown: default-days: 7` on each entry, four days more than the
+  default. The auto-merge above merges a minor or patch update the moment the build is
+  green, and a green build says nothing about whether a new release can be trusted, so the
+  delay is what keeps one published this morning, a compromised one included, off `main`
+  before anybody could notice and withdraw it. Today it covers less than that. Every
+  action is pinned to a major tag, and Dependabot keeps the precision of the ref it finds:
+  it never proposes `v7.x.y` for an `@v7` pin, only the next major, which is never
+  auto-merged and waits for a human (both pull requests it has opened here were majors).
+  The cooldown therefore delays the proposal of a major, and guards an unattended merge
+  only once an entry gains a minor or patch stream. It does not cover a floating tag at
+  all: when an action's maintainer moves `v7`, the workflows follow at once, with no pull
+  request and so no delay, and only a pin to a full-length commit SHA prevents that. The
+  maintainer decided against that pin, and this invariant does not reopen it. The `docker`
+  entry has the same number although nothing it proposes merges unattended, since every
+  update it can raise is a Node major that waits for a human: written out, it leaves the
+  file with no exception to explain. A cooldown holds back version updates only, so a
+  security update is never delayed by it. The number is the maintainer's to change, and
+  there is one per entry. `default-days` is the only duration key these two ecosystems
+  take: `semver-major-days` and its siblings exist for semver ecosystems such as pip and
+  npm, which are not watched here, and `include` and `exclude` narrow a cooldown to chosen
+  dependencies. `exclude` is what exempts one outright; the absence of a block is the
+  default of three days, not an exemption. Dependabot validates the file on the pull
+  request itself, as the `.github/dependabot.yml` check run ("Dependabot config file
+  validation"), which catches a parse or schema error. What Dependabot then does with it
+  shows only on Insights > Dependency graph > Dependabot, after the merge, so look there
+  when this file changes.
 - **Pull requests are kept level with the default branch, and never required to be, in
   every repository of this owner.** "Require branches to be up to date before merging" stays
   off -- `.github/rulesets/main.json` records it as `strict_required_status_checks_policy:
@@ -242,6 +300,64 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   edited issue takes a name back once it is out. "A private repository of this owner" is
   as specific as a reference to one gets. Naming the public `Dragnix-Tigerblue77`
   organisation is fine. Shared like the rules above (#47, #50).
+- **Workflows are linted by actionlint and zizmor, both required, with pinned tools and
+  without the audits that need the network.** `.github/workflows/lint-workflows.yml`
+  reports them under the names of their jobs, which are the contexts in
+  `.github/rulesets/main.json`. That file is a record and not the live setting: a check is
+  required only once the file has been imported again under Settings > Rules. The
+  `pull_request` trigger has no `paths` filter, for the reason `build-and-publish.yml`
+  gives: a filtered workflow does not report a skipped check, it reports nothing, and the
+  pull request waits for it for ever. Both tools are pinned and nothing bumps them, since
+  Dependabot reads `uses:` lines and not these, so a newer release, which usually knows
+  more mistakes, is a deliberate edit that can turn a required check red on a tree nobody
+  touched. actionlint, v1.7.12, is installed with `go install`, whose checksum database
+  authenticates the module, and runs with `-shellcheck= -pyflakes=`: those integrations
+  would make the verdict depend on whichever versions the runner image carries that week.
+  zizmor, 1.30.1, is installed from PyPI with `--require-hashes`, as the manylinux wheel
+  whose hash the step states, and runs `--offline`, because its online audits ask advisory
+  data that changes daily. That drops five audits, `impostor-commit`,
+  `known-vulnerable-actions`, `ref-confusion`, `stale-action-refs` and
+  `ref-version-mismatch` (`zizmor --offline -vv` lists them as skipped for want of a GitHub
+  API token; the documentation's table says four), the ones that ask GitHub what a
+  reference resolves to or whether an action has a published advisory. They matter here,
+  since the policy below accepts symbolic refs: a moved `v7` is caught by none of what
+  runs. The last one is about hash pins and their version comments, and there are none.
+  zizmor also runs with `--strict-collection`. Without it a file it cannot read, a
+  workflow that is not valid YAML or a `dependabot.yml` that does not match its schema, is
+  a warning and the run is green; actionlint fails an unparsable workflow by itself, but
+  zizmor is the only tool that reads `dependabot.yml`, so `default-days: "seven"` would
+  pass. Not everything the jobs read is pinned either. The runner image's Go
+  and Python, `actions/checkout@v7` itself and the Go toolchain that actionlint's `go.mod`
+  makes `go install` select all float, so "pinned" is a statement about the two tools and
+  not about the whole job.
+
+  A finding is fixed rather than ignored: no audit is switched off, no threshold is lowered
+  and no `# zizmor: ignore` comment exists. What the configuration does state is
+  deliberate. `.github/zizmor.yml` accepts actions on a version tag, which is the
+  maintainer's decision and not the tool's default of a commit hash, and that is its only
+  setting. It accepts a risk and does not remove it: Dependabot follows the major tag and
+  proposes the next major, and nothing sits between a maintainer moving the tag and the
+  workflows, which only a full-length commit SHA pin removes. zizmor's `artipacked` audit
+  fails a checkout that omits `persist-credentials: false`, a low-severity finding
+  included. Its `dependabot-cooldown` audit runs at its default threshold of seven days,
+  which is the cooldown `.github/dependabot.yml` states, but in 1.30.1 it stops at the
+  first `updates` entry that passes: the entries before it are judged and the ones after
+  it are not, so `[7, 3]` and `[7, none]` pass while `[3, 3]` flags both. It is a partial
+  check of that decision and not a pin. `.github/actionlint.yaml` ignores two messages, in
+  one workflow, about `actions/create-github-app-token@v3`: actionlint's built-in table of
+  action inputs predates the `client-id` input that action's `action.yml` has at `v3`. The
+  workflow is right and the table is stale, so drop the file when a bumped actionlint stops
+  reporting them.
+
+  What each tool lets through is therefore pinned by `.github/check-lint-config.sh`, run by
+  its own job: the exact command line (so `--offline`, `--strict-collection` and
+  `-shellcheck= -pyflakes=` cannot be dropped), the whole of its configuration file
+  without comments (so an ignore cannot be widened, added or aimed at another workflow,
+  and a threshold cannot be lowered), the absence of a second configuration file, and the
+  absence of an inline `zizmor: ignore`. Changing one of those is a change to the expected
+  text in that script in the same pull request, which is what puts it in front of a
+  reviewer. What the script cannot see is the tools themselves and the pins of their
+  versions.
 
 ## The authentication trap
 
@@ -291,7 +407,13 @@ commit authored under the agent it writes precisely the shape the Sign-off check
 The hook is repository-local, best-effort and never blocks a session: if it cannot set the
 alias it says so and tells you the `--trailer` form to pass by hand.
 
-If a lint ever gates pull requests -- `hadolint` on the `Dockerfile`, `actionlint` or
-`yamllint` on the workflow -- installing it in this same hook is the way to keep those
+If a lint gates pull requests, installing it in this same hook is the way to keep its
 findings out of a CI round trip, on the terms the hook already keeps: only in a remote
-session, best effort, and a failure reported rather than blocking the session.
+session, best effort, and a failure reported rather than blocking the session. Two do now,
+actionlint and zizmor on the workflows, and the hook does not install them yet. A cold
+install of both took about fifteen seconds, half of the 30-second timeout
+`.claude/settings.json` gives the hook, and a hook that overruns it stops standing up
+`git signoff`, which is what it is there for. Moving them in is therefore a change to make
+together with that timeout, not a line to append; until then, the commands under
+[Lint](#lint) are the way. `hadolint` on the `Dockerfile` or `yamllint` would be the same
+decision.
