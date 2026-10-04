@@ -118,6 +118,17 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
+- **Every `actions/checkout` sets `persist-credentials: false`, unless a later step of the
+  same job really authenticates through git.** By default the action writes the job's token
+  into `.git/config`, where every later step, and an upload of the workspace as an
+  artifact, can read it. Nothing here needs it: `build-and-publish.yml` logs in to the
+  registry by handing the token to `docker login`, `sign-off.yml` fetches its full history
+  during the checkout step itself, with the credential the action sets up for that step,
+  and only reads it afterwards, and `ruleset.yml` only reads files. The two workflows
+  without a checkout, `auto_update_pull_request_branches.yml` and
+  `dependabot-auto-merge.yml`, work through `gh` with a token of their own. A checkout
+  that has to keep the credential, because a later step pushes or fetches through git,
+  leaves it on and names that step in a comment beside it.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the
