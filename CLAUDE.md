@@ -210,6 +210,14 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   proposed deferral) is not postponing, the decision being theirs. Any deferral, a split
   into a separate pull request included, whether theirs or accepted from a proposal, gets a
   durable reminder (an issue), not a sentence in the chat.
+- **An issue is something to do, not something to remember.** It is opened for work to be
+  done, now or later, and it closes when that work is done. A deferral the maintainer
+  chose is such work, and so is the follow-up of a problem upstream that this repository
+  cannot fix, which stays open until upstream does. A decision, a condition to wait for, a
+  reason for not building something is never kept alive as an open issue: it is written
+  where it will be read when it matters -- a line in the README, a comment above the code,
+  this file -- and the issue that discussed it closes with the reasoning in its
+  description (#70).
 - **Everything a session posts on GitHub is signed, with the link to the session that wrote
   it.** An issue, a pull request, a comment, a review and a reply on a review thread each
   end with a blank line, a `---` rule and this line, and an edit to one keeps it:
