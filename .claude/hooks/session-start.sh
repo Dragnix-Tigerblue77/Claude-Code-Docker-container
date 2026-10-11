@@ -23,8 +23,7 @@
 #     automate it in the session rather than trusting it to memory
 #
 # That sentence has been in CONTRIBUTING.md since the legal annexes landed, pointing at an
-# automation that did not exist. Measured while it did not : four of the five commits on main
-# carried no sign-off at all. This file is that automation.
+# automation that did not exist. This file is that automation.
 #
 # "git signoff" therefore replaces "git commit -s" for a session working here. It takes the
 # same arguments -- "git signoff -m ...", "git signoff --amend --no-edit" -- and differs only
