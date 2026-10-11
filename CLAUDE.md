@@ -260,6 +260,14 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   a translation, which is made once they agree.
   Shared like the rules above (#39, extended to pull requests by #41). What was opened
   here before the rule reached it was translated once it did.
+- **Nothing is postponed on the session's own initiative.** What comes next is done now, in
+  the session that has the context for it, because a session that ends takes its context
+  with it: no "later", "tomorrow" or "in a separate pull request" unless the maintainer
+  chose it or accepted a proposal for it. A session may propose one, with its reason, and
+  then waits for the answer: waiting for the maintainer's answer (to a plan, a question, a
+  proposed deferral) is not postponing, the decision being theirs. Any deferral, a split
+  into a separate pull request included, whether theirs or accepted from a proposal, gets a
+  durable reminder (an issue), not a sentence in the chat.
 - **Everything a session posts on GitHub is signed, with the link to the session that wrote
   it.** An issue, a pull request, a comment, a review and a reply on a review thread each
   end with a blank line, a `---` rule and this line, and an edit to one keeps it:
