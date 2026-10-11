@@ -4,14 +4,14 @@
 name: Sign-off
 
 # CONTRIBUTING.md requires a Signed-off-by line on every commit and nothing
-# looked for one until this job. Of the five commits on main when it was
-# written, one carried it.
+# looked for one until this job.
 #
 # On pull requests only, deliberately : a squash merge composes its message from
 # the pull request rather than from the branch, so the branch's own commits are
 # the last place the trailer still exists to be read. Running this on a push to
-# main would also leave the default branch permanently red over four commits
-# that cannot be signed without rewriting published history.
+# main would also leave the default branch permanently red over the unsigned
+# commits already there, which cannot be signed without rewriting published
+# history.
 #
 # The reasoning behind every decision the check makes lives in the script, next
 # to the code that makes it.

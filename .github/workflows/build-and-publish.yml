@@ -85,9 +85,9 @@ jobs:
           # TWO NAMES, and they are deliberately not the same one.
           #
           # DIST_TAG is the npm channel this image is BUILT FROM. "stable" lags
-          # "latest" by a few releases -- 27 of them the day this was written --
-          # and has therefore survived contact with other people, which is what
-          # an image somebody runs daily wants underneath it.
+          # "latest" by a few releases and has therefore survived contact with
+          # other people, which is what an image somebody runs daily wants
+          # underneath it.
           #
           # MOVING_TAG is the Docker tag this image is PUBLISHED UNDER. It is
           # "latest" because that is the tag "docker pull <image>" resolves to
