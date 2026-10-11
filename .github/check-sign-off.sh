@@ -12,17 +12,15 @@
 # record that a contributor had the right to submit their work under both arms.
 # It is what makes the commercial half grantable.
 #
-# Measured when this file was written, one of the five commits on main carried
-# it. A rule stated in one file, honoured a fifth of the time and checked
-# nowhere is worse than no rule at all : nobody goes looking for what is
-# already supposed to be required.
+# A rule stated in one file and checked nowhere is worse than no rule at all :
+# nobody goes looking for what is already supposed to be required.
 #
 # ON PULL REQUESTS ONLY, AND THAT IS NOT A GAP. A squash merge composes its
 # message from the pull request rather than from the branch, so the branch's own
 # commits are the last place the trailer still exists to be read -- by the time
 # main has the squash, the information is gone. Running this on a push to main
-# would also mean a permanently red default branch, since the four unsigned
-# commits already there cannot be signed without rewriting published history.
+# would also mean a permanently red default branch, since the unsigned commits
+# already there cannot be signed without rewriting published history.
 #
 # So it gates what arrives from here on, and leaves the history it was written
 # for alone.

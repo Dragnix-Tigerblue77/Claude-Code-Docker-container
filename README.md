@@ -79,7 +79,7 @@ docker pull ghcr.io/dragnix-tigerblue77/claude-code-docker-container
 | `latest` | The moving tag, rebuilt whenever a new Claude Code release appears on the followed channel or the base image gets security fixes. **Use this one** unless you have a reason not to. |
 | `<version>` | One exact version, `2.1.236` for instance. Immutable : once published it is never rebuilt or moved, which is what makes it the thing to pin and the thing to roll back to. |
 
-**`latest` does not mean "the newest Claude Code".** The image is built from npm's `stable` channel, which trails npm's own `latest` by a few releases — 27 of them at the time of writing — and has therefore survived contact with other people. That lag is deliberate for an image people run every day : it is a good trade against being the one who finds the regression.
+**`latest` does not mean "the newest Claude Code".** The image is built from npm's `stable` channel, which trails npm's own `latest` by a few releases and has therefore survived contact with other people. That lag is deliberate for an image people run every day : it is a good trade against being the one who finds the regression.
 
 The two names are separate settings, and either can be changed without touching code : `NPM_DIST_TAG` picks the npm channel the image is built from, `IMAGE_MOVING_TAG` picks the Docker tag it is published under. The channel a given image actually came from is recorded on it as a label, so you never have to guess :
 
