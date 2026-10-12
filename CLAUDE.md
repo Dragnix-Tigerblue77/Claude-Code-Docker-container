@@ -291,6 +291,12 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   for is its own step for the maintainer to decide, never folded into the command that
   reads. The rule on questions staying open keeps an unanswered *decision* open; it does
   not turn a recollection into one.
+- **A question stands on its own.** The maintainer drives several sessions at once and
+  reads each question cold, so it has to be answerable without the conversation behind it:
+  one sentence says what it is about, an issue or pull request number comes with its title
+  or what it does, the session's recommendation comes first, and what each answer would
+  change follows. Where it can be a yes or a no, it is. A question the maintainer calls
+  unclear is rewritten, not defended.
 - **A secret's value is never written where it can be read again.** Not in the chat, an
   issue, a pull request, a comment, a commit message or a command handed to the
   maintainer, examples included: a secret is named (its variable, its file, its secret
