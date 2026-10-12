@@ -315,6 +315,11 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   was taken, and leave the alternatives in the issue. The one exception is a fix that
   would be guesswork: there the pull request is the one thing not opened, and the issue
   says so.
+- **A closing keyword closes whatever follows it, whatever surrounds it.** GitHub reads
+  "close #NN", "closes", "fix", "fixes", "resolve" and their other forms anywhere in the
+  title or the body of a pull request and ignores a negation, so "this does not close #NN"
+  closes it on merge. A pull request that delivers only part of an issue writes "Refs #NN"
+  and describes the rest without putting the keyword next to the number.
 - **One issue, one subject.** If a second subject appears, it is split off.
 - **A fix goes to the cause, and a workaround says that it is one.** Every fix proposed
   says which of the two it is, and the one wanted is the cause. A workaround is acceptable
@@ -364,6 +369,16 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   lost by leaving it out -- it is in the commit message and the pull request body, where a
   reviewer can go and find it, and repeating it in the chat is the second copy that drifts.
   Tables and lists over paragraphs, and never a restatement of what was just asked.
+- **A request to merge says what the pull request brings.** Merging is the maintainer's own
+  act, Dependabot's minor and patch updates apart, which merge themselves once CI is green
+  (see the rule on Dependabot above), so the ask carries what they need in order to decide,
+  pull request by pull request: what it does, which goal it serves, what it changes, and --
+  whenever it changes something that runs -- how to test it, as the command to type or the
+  thing to watch rather than "CI is green". What could not be verified, and why, stays in.
+  Several at once come in the order they want merging in: the one their dependencies
+  impose, and where nothing imposes one, the simplest first, so that each review starts
+  from a smaller diff than the last. "This is ready" makes them work all of that out from
+  the diff, which is the work the session was supposed to have already done, done twice.
 - **A secret's value is never written where it can be read again.** Not in the chat, an
   issue, a pull request, a comment, a commit message or a command handed to the
   maintainer, examples included: a secret is named (its variable, its file, its secret
