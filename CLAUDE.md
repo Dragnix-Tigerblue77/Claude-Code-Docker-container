@@ -306,6 +306,15 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   lost by leaving it out -- it is in the commit message and the pull request body, where a
   reviewer can go and find it, and repeating it in the chat is the second copy that drifts.
   Tables and lists over paragraphs, and never a restatement of what was just asked.
+- **A request to merge says what the pull request brings.** Merging is the maintainer's own
+  act, so the ask carries what they need in order to decide, pull request by pull request:
+  what it does, which goal it serves, what it changes, and -- whenever it changes something
+  that runs -- how to test it, as the command to type or the thing to watch rather than "CI
+  is green". What could not be verified, and why, stays in. Several at once come in the
+  order they want merging in: the one their dependencies impose, and where nothing imposes
+  one, the simplest first, so that each review starts from a smaller diff than the last.
+  "This is ready" makes them work all of that out from the diff, which is the work the
+  session was supposed to have already done, done twice.
 - **A secret's value is never written where it can be read again.** Not in the chat, an
   issue, a pull request, a comment, a commit message or a command handed to the
   maintainer, examples included: a secret is named (its variable, its file, its secret
