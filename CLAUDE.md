@@ -297,6 +297,15 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   or what it does, the session's recommendation comes first, and what each answer would
   change follows. Where it can be a yes or a no, it is. A question the maintainer calls
   unclear is rewritten, not defended.
+- **A reply is as short as the decision it carries.** A wall of prose is skipped whole,
+  which costs more than saying too little: what got skipped included the question. So the
+  verdict first -- for a decision to take, what the maintainer gains and what it costs
+  them, in two lines -- then the numbers behind it, the question that needs an answer, and
+  nothing else. Every question asked carries the session's recommendation and its reason in
+  one line, or says there is none and why. The reasoning that earned a conclusion is not
+  lost by leaving it out -- it is in the commit message and the pull request body, where a
+  reviewer can go and find it, and repeating it in the chat is the second copy that drifts.
+  Tables and lists over paragraphs, and never a restatement of what was just asked.
 - **A secret's value is never written where it can be read again.** Not in the chat, an
   issue, a pull request, a comment, a commit message or a command handed to the
   maintainer, examples included: a secret is named (its variable, its file, its secret
