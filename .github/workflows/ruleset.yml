@@ -27,6 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The next step only reads files, so nothing needs the credential the
+          # checkout sets up. With this it is removed right after the fetch, and
+          # no later step of the job inherits it
+          persist-credentials: false
 
       - name: Check the ruleset against the workflows
         run: .github/check-ruleset.sh

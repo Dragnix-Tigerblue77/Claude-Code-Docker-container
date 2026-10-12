@@ -134,6 +134,18 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
+- **Every `actions/checkout` sets `persist-credentials: false`, unless a later step of the
+  same job really authenticates through git.** By default the action keeps the job's token
+  for the steps that follow. v7 writes it to a config file under `$RUNNER_TEMP` and points
+  the checked-out repository at it with `includeIf` entries, so any later step can use it,
+  or read it back through git, until the job's cleanup removes it. With the option off,
+  the action removes the credential it set up when its own step ends, right after it has
+  fetched with it, so no later step inherits it. That removes the copy the checkout
+  leaves behind and not the token: a step that names `secrets.GITHUB_TOKEN`, as the
+  registry login does, still has it. Nothing here needs more: no step pushes or fetches
+  through git after a checkout, and the workflows that talk to GitHub do it through `gh`
+  with a token they are handed explicitly. A checkout that has to keep the credential
+  leaves it on and names, in a comment beside it, the step that needs it.
 - **Every commit carries a `Signed-off-by`, and it never names the agent.**
   `CONTRIBUTING.md` states the rule and the `Sign-off` workflow enforces it on every
   pull request. It is not a formality here: the project is dual-licensed, and the
