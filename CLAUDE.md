@@ -526,11 +526,12 @@ something worth stopping to ask about. And `git` is granted by subcommand rather
 
 `.claude/hooks/session-start.sh` runs at the start of every remote session, and it
 **installs nothing**, although installing what CI gates on is what such a hook is usually
-for. Nothing here is gated on a tool a hook would have to install: the checks lean on `git`,
-`npm` and `jq`, which come with the session's image, and the one thing a session needs that
-is not a package is a Docker daemon. What it configures instead is the one rule a session
-cannot satisfy by remembering it — **`git signoff`**, an alias that commits with the
-maintainer's `Signed-off-by` passed explicitly.
+for. The checks lean on `git`, `npm` and `jq`, which come with the session's image, and on
+actionlint and zizmor, which do not and which the hook does not install yet, for the reason
+given below. The one thing a session needs that is not a package is a Docker daemon. What it
+configures instead is the one rule a session cannot satisfy by remembering it —
+**`git signoff`**, an alias that commits with the maintainer's `Signed-off-by` passed
+explicitly.
 
 Use it instead of `git commit -s`. That flag derives the trailer from the author, so on a
 commit authored under the agent it writes precisely the shape the Sign-off check refuses.
@@ -554,10 +555,13 @@ thing it owes itself is to find out rather than assume.** The build needs a Dock
 which Claude Code on the web lacks, as *Commands* says, and the other tools the checks lean
 on are the image's and not the hook's, so they can be missing too: `npm` for the version the
 workflow resolves, `jq` for `.github/check-ruleset.sh`, `git` for
-`.github/check-sign-off.sh`. So establish what this session has before leaning on any of it:
+`.github/check-sign-off.sh`. actionlint and zizmor, which the image does not ship, are there
+only once the commands under [Lint](#lint) have installed them. So establish what this
+session has before leaning on any of it:
 
 ```bash
 docker info --format 'Docker daemon {{.ServerVersion}}'; npm --version; jq --version; git --version
+"$(go env GOPATH)/bin/actionlint" -version; zizmor --version
 ```
 
 Each command answers for one tool, so a missing one does not hide the rest. It is
