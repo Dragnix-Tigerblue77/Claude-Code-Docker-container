@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Tigerblue77 and the Claude Code Docker container image contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Read by the "actionlint" job of .github/workflows/lint-workflows.yml, which finds it
+# here by itself. One entry, two messages, one file : a false positive and not a mistake
+# of the workflow.
+#
+# actionlint knows the inputs of the popular actions from a table built into the release,
+# and v1.7.12's entry for actions/create-github-app-token@v3 is out of date : it lists
+# "app-id" as the required input and does not know "client-id". The action's own
+# action.yml at v3 has "client-id", and marks "app-id" as deprecated in its favour, which
+# is what auto_update_pull_request_branches.yml uses, and what its header says to use : the
+# client ID shown on the App's settings page. Writing "app-id" there to please the linter
+# would break the workflow, so the two messages are ignored, and only for that file.
+#
+# Drop this file the day a newer actionlint, which has to be a deliberate bump of the pin
+# in lint-workflows.yml, no longer reports them : run it without this file first.
+paths:
+  .github/workflows/auto_update_pull_request_branches.yml:
+    ignore:
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token@v3"'
+      - 'input "client-id" is not defined in action "actions/create-github-app-token@v3"'
