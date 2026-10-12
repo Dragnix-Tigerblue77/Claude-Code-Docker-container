@@ -410,10 +410,11 @@ something worth stopping to ask about. And `git` is granted by subcommand rather
 
 `.claude/hooks/session-start.sh` runs at the start of every remote session, and it
 **installs nothing**, although installing what CI gates on is what such a hook is usually
-for. Nothing here is gated on a tool a hook could apt-install: the one thing a session needs
-beyond `git` is a Docker daemon, which is not a package. What it configures instead is the
-one rule a session cannot satisfy by remembering it — **`git signoff`**, an alias that
-commits with the maintainer's `Signed-off-by` passed explicitly.
+for. Nothing here is gated on a tool a hook would have to install: the checks lean on `git`,
+`npm` and `jq`, which come with the session's image, and the one thing a session needs that
+is not a package is a Docker daemon. What it configures instead is the one rule a session
+cannot satisfy by remembering it — **`git signoff`**, an alias that commits with the
+maintainer's `Signed-off-by` passed explicitly.
 
 Use it instead of `git commit -s`. That flag derives the trailer from the author, so on a
 commit authored under the agent it writes precisely the shape the Sign-off check refuses.
@@ -425,3 +426,22 @@ If a lint ever gates pull requests -- `hadolint` on the `Dockerfile`, `actionlin
 `yamllint` on the workflow -- installing it in this same hook is the way to keep those
 findings out of a CI round trip, on the terms the hook already keeps: only in a remote
 session, best effort, and a failure reported rather than blocking the session.
+
+**Since the hook installs nothing, a session has whatever its image ships, and the first
+thing it owes itself is to find out rather than assume.** The build needs a Docker daemon,
+which Claude Code on the web lacks, as *Commands* says, and the other tools the checks lean
+on are the image's and not the hook's, so they can be missing too: `npm` for the version the
+workflow resolves, `jq` for `.github/check-ruleset.sh`, `git` for
+`.github/check-sign-off.sh`. So establish what this session has before leaning on any of it:
+
+```bash
+docker info --format 'Docker daemon {{.ServerVersion}}'; npm --version; jq --version; git --version
+```
+
+Each command answers for one tool, so a missing one does not hide the rest. It is
+`docker info` and not `docker --version` because the binary is there either way, and only
+the first asks the daemon.
+
+Then say in the pull request body which checks did not run and why. Reporting a check as
+passing because it normally passes is the single failure this exists to prevent:
+"everything passes" while a check never ran is worse than saying nothing.
