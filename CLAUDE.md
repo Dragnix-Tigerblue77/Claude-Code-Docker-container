@@ -257,6 +257,11 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   was taken, and leave the alternatives in the issue. The one exception is a fix that
   would be guesswork: there the pull request is the one thing not opened, and the issue
   says so.
+- **A closing keyword closes whatever follows it, whatever surrounds it.** GitHub reads
+  "close #NN", "closes", "fix", "fixes", "resolve" and their other forms anywhere in the
+  title or the body of a pull request and ignores a negation, so "this does not close #NN"
+  closes it on merge. A pull request that delivers only part of an issue writes "Refs #NN"
+  and describes the rest without putting the keyword next to the number.
 - **One issue, one subject.** If a second subject appears, it is split off.
 - **A fix goes to the cause, and a workaround says that it is one.** Every fix proposed
   says which of the two it is, and the one wanted is the cause. A workaround is acceptable
