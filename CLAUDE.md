@@ -304,6 +304,13 @@ These are settled decisions with a cost behind them. Do not "clean them up".
 - **Never hand over a file to download.** Any manual step is given as a **pre-filled
   link** -- an issue creation URL carrying its title and body, the GitHub settings page
   concerned, the direct link to the item to delete.
+- **An issue for a third-party project is drafted to that project's standard, and checked
+  before it is posted.** Its tracker is searched first, and an issue already open gets a
+  comment, not a duplicate. The pre-filled link opens the project's own issue form
+  (`issues/new?template=...`), never a blank issue, and the draft fills in every field the
+  form asks for. It goes out under the maintainer's name, so every claim in it is verified
+  first. Here that includes `anthropics/claude-code`, where a defect in the tool belongs,
+  as the opening of this file says.
 - **An issue's whole point lives in its description.** Nothing essential is buried in the
   comments, fallback options considered in case the first choice fails included.
 - **An issue opened in a session comes with its pull request.** The issue is written for
