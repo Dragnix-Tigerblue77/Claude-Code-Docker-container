@@ -303,6 +303,10 @@ the same piece of work, or the copies drift.
   Anthropic CLI is not a French-speaking one. An issue, a pull request or a comment found in
   another language is never let pass silently: the maintainer is told, every time, with the
   link, and offered a translation, which is made once they agree.
+- **The conversation with the maintainer is in French.** Every reply to the maintainer in a
+  session is written in French, whatever language the instructions, the code and the tool
+  output around it are in; what goes into the tree and onto GitHub stays in English, as the
+  rule above says. The rule on keeping a reply short holds in French as in English.
 - **Nothing is postponed on the session's own initiative.** What comes next is done now,
   since a session that ends takes its context with it. A deferral, a split into another pull
   request included, is the maintainer's call: a session may propose one, with its reason,
@@ -336,6 +340,11 @@ the same piece of work, or the copies drift.
   fixed formula, because it is a signature and not prose. A commit message is not covered:
   it credits the agent in a `Co-Authored-By` trailer and carries the maintainer's
   `Signed-off-by`, as the rule on sign-offs above says.
+- **Issue and pull request text runs the full width GitHub gives it.** No hard line break
+  inside a paragraph, in a body or in a comment: GitHub reflows prose to the reader's own
+  window. Headings, list items, table rows, fenced code and the `>` of a blockquote keep
+  their lines, and the prose inside them is one line per paragraph. Files in the repository
+  are the opposite and stay wrapped.
 - **A command handed to the maintainer is complete, quiet, and runs as it is**: nothing to
   fill in by hand, no step left to infer, no `sudo` (the maintainer already works as root
   where needed), and it prints only what the session needs to read, a long log going to a
@@ -349,9 +358,15 @@ the same piece of work, or the copies drift.
   (`issues/new?template=...`), never a blank issue, and the draft fills in every field the
   form asks for. It goes out under the maintainer's name, so every claim in it is verified
   first.
+- **Proposals belong in the chat, not in an issue comment.** The discussion happens in the
+  session, and only the agreed result lands in the repository.
 - **An issue's whole point lives in its description, and it has one subject.** Nothing
   essential is buried in the comments, fallback options considered in case the first choice
   fails included, and a second subject is split off.
+- **A tool that is turned down is recorded, with why, in the issue that discussed it** --
+  and one retired after it ran, with what running it taught. Name each tool exactly
+  (owner/repo), so it can be found again. The record belongs in the description, not in a
+  comment under it, so the next session starts from it.
 - **An issue opened in a session comes with its pull request**, opened in the same breath
   and to the usual standard: checks run, reasoning in the commit message, what could not be
   verified in the body. The issue still states the problem and the options, so both survive
