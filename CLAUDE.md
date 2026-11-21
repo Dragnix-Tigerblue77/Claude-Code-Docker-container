@@ -150,6 +150,10 @@ These are settled decisions with a cost behind them. Do not "clean them up".
   The repository is public and AGPL-3.0-only. A file whose licence is stated only by a
   `LICENSE` at the root loses that statement the moment it is copied out on its own, which
   is what happens to a workflow that someone finds useful.
+- **No version in a comment.** A comment names no version of a tool, a language, an image or a
+  dependency: the number goes stale without anything failing, and the file that pins it already
+  says it. Lines already in a file are left as they are, and an edit to one that cites a version
+  takes it out. The maintainer asked for it on 2026-11-21.
 - **Every `actions/checkout` sets `persist-credentials: false`, unless a later step of the
   same job really authenticates through git.** By default the action keeps the job's token
   for the steps that follow. v7 writes it to a config file under `$RUNNER_TEMP` and points
