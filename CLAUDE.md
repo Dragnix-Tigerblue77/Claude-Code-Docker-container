@@ -344,6 +344,14 @@ the same piece of work, or the copies drift.
   fixed formula, because it is a signature and not prose. A commit message is not covered:
   it credits the agent in a `Co-Authored-By` trailer and carries the maintainer's
   `Signed-off-by`, as the rule on sign-offs above says.
+- **A post ends with its signature and a last line `<!--`, which hides the platform's own
+  footer.** The platform appends a footer of its own after whatever a session writes, and again on
+  every edit made from a session, so it cannot be taken off, only hidden: an HTML comment left open
+  swallows what follows it, so the footer lands inside the comment and the rendered page ends with
+  the signature alone. A session writes the signature, a blank line and `<!--`, and reads the
+  rendered page (`body_html` through the API, with the `application/vnd.github.html+json` media
+  type) the first time it posts a kind of text, a comment or an issue body included, rather than
+  assuming it worked.
 - **Issue and pull request text runs the full width GitHub gives it.** No hard line break
   inside a paragraph, in a body or in a comment: GitHub reflows prose to the reader's own
   window. Headings, list items, table rows, fenced code and the `>` of a blockquote keep
