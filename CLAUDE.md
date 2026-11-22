@@ -390,6 +390,12 @@ the same piece of work, or the copies drift.
   `main`, though it reads as merged. Changes that depend on each other share one pull
   request. A merge is reported only once its content has been read on `main`, never from
   the pull request's status.
+- **A pull request is amended, never closed to open another.** A correction, a rebuild on a
+  newer `main` or a rewritten description is made on the same pull request, by a new commit
+  or, on a branch the session itself owns, by a rebase and a force-push with
+  `--force-with-lease`, which the maintainer allows for exactly this: a second pull request
+  for the same subject splits the discussion across two links and leaves one of them to
+  close. A branch somebody else owns is never rewritten.
 - **A fix goes to the cause, and a workaround says that it is one.** Every fix proposed
   says which it is, and the cause is the one wanted; a workaround is a stopgap labelled as
   one where it lands (the commit, the pull request, the comment above it), with the cause
