@@ -439,6 +439,11 @@ the same piece of work, or the copies drift.
   question that needs an answer, and nothing else: the reasoning is in the commit message
   and the pull request body, and a second copy in the chat drifts. Tables and lists over
   paragraphs, and never a restatement of what was just asked.
+- **A notification that calls for nothing gets no message.** A CI run on a commit already
+  replaced, a check that passed, an event already handled: the session deals with it
+  silently, and writes to the maintainer only when there is something to decide, something
+  done, or something broken. A line saying that nothing needs doing is still a line to
+  read.
 - **A request to merge says what the pull request brings**, merging being the maintainer's
   act (Dependabot's minor and patch updates apart). For each pull request: what it does,
   which goal it serves, what it changes, how to test it whenever it changes something that
