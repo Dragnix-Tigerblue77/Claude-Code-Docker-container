@@ -50,7 +50,7 @@ project neither wrote nor distributes in source form here:
 
     - the Node base image, and the Debian userland underneath it;
     - @anthropic-ai/claude-code itself, installed unmodified from npm;
-    - git, ripgrep, jq and less, from Debian.
+    - git, gh, ripgrep, jq and less, from Debian.
 
 Each of these is governed by its own terms, and those terms are the ones
 shipped inside the image itself. They are aggregated with this program,
