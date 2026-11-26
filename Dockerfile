@@ -21,6 +21,9 @@ ARG TZ=Etc/UTC
 ENV TZ="${TZ}"
 
 # git             : Claude Code reads and writes repositories
+# gh              : the GitHub CLI, which Claude Code runs for pull requests and issues;
+#                   it signs in with a GH_TOKEN or GITHUB_TOKEN given at run time.
+#                   Debian's own package, so no third-party apt source or key is trusted
 # ripgrep         : its file search falls back to a much slower path without it
 # less            : pager for long output
 # jq              : ubiquitous in the shell snippets Claude Code writes
@@ -28,6 +31,7 @@ ENV TZ="${TZ}"
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates \
+      gh \
       git \
       jq \
       less \

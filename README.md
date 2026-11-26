@@ -181,6 +181,7 @@ Mount `/home/node` and both are covered.
 | `node:26-slim` | The base follows a rule rather than a fixed version : an Active LTS Node line, or a Current one within six months of becoming LTS. The package itself only asks for Node ≥ 18, so this is a choice of a supported base rather than a constraint. |
 | `@anthropic-ai/claude-code` | Installed at a **pinned** version, supplied as a build argument. An image whose contents depend on the day it was built cannot be reproduced, and cannot be rolled back. |
 | `git` | Claude Code reads and writes repositories. |
+| `gh` | The GitHub CLI, which Claude Code runs for pull requests and issues. It signs in with a token given to the container as `GH_TOKEN` or `GITHUB_TOKEN`; without one, Claude Code's status line asks for `gh auth login`, and with neither the CLI nor a token it asks to install `gh`. It is Debian's own package, so no third-party apt source or signing key is trusted, at the price of trailing GitHub's own releases. |
 | `ripgrep` | Its file search falls back to a much slower path without it. |
 | `jq` | Ubiquitous in the shell snippets Claude Code writes. |
 | `less` | Pager for long output. |
@@ -293,7 +294,7 @@ The short version : **using** it never requires a commercial licence, and never 
 
 ### What this licence does and does not cover
 
-It covers **this repository** — the Dockerfile, the workflow, the documentation. It does **not** cover Claude Code itself, which remains subject to [Anthropic's terms][anthropic-terms], nor the other software the published image contains : the Node base image, `git`, `ripgrep`, `jq` and `less`, each under its own licence. Those are aggregated with this work, not derived from it, and their terms travel inside the image.
+It covers **this repository** — the Dockerfile, the workflow, the documentation. It does **not** cover Claude Code itself, which remains subject to [Anthropic's terms][anthropic-terms], nor the other software the published image contains : the Node base image, `git`, `gh`, `ripgrep`, `jq` and `less`, each under its own licence. Those are aggregated with this work, not derived from it, and their terms travel inside the image.
 
 Copyright notices, attribution and the third-party terms that apply to the published image are recorded in [`NOTICE`][link-to-notice-file].
 
