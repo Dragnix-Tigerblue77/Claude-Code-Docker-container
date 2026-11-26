@@ -199,16 +199,17 @@ Two settings are worth knowing about :
 
 A workflow runs **every day**, on every pull request, and on demand.
 
-On a schedule or on demand it compares **two** things against the published moving tag, and rebuilds if either has moved :
+On a schedule or on demand it compares **three** things against the published moving tag, and rebuilds if any has moved :
 
 - the version npm resolves for the followed channel, against the one recorded on the published image ;
-- the current digest of the base image, against the one the published image was built on.
+- the current digest of the base image, against the one the published image was built on ;
+- the digest of the `Dockerfile` on `main`, against the one the published image was built from, so that a change to the recipe, a package added say, is published by the next run without waiting for a new version or a new base.
 
-Both are read back from the image's own OCI labels, so no state is kept anywhere that could fall out of step with the registry. **When neither has moved, nothing is built and nothing is pushed** — a cron that rebuilt every time would publish 365 identical images a year and make the tag history useless for telling when anything actually changed.
+All three are read back from the image's own labels, so no state is kept anywhere that could fall out of step with the registry. **When none has moved, nothing is built and nothing is pushed** — a cron that rebuilt every time would publish 365 identical images a year and make the tag history useless for telling when anything actually changed.
 
 The second comparison is why this runs daily rather than weekly. `FROM` names a floating tag, so Debian's and Node's security fixes land on the base without a line of this repository changing ; watching only the npm version would leave the patch latency of this image decided by Claude Code's release cadence. A run with nothing to do is two registry reads and no build at all.
 
-A rebuild caused by the base moving republishes the **moving tag only**. The version tag keeps the bytes it was published with, which is what makes it the thing to pin and to roll back to.
+A rebuild caused by the base or the `Dockerfile` moving republishes the **moving tag only**. The version tag keeps the bytes it was published with, which is what makes it the thing to pin and to roll back to.
 
 On a pull request it stops one step short of the registry : it resolves the version, builds, and runs the image, then skips the login and the push.
 

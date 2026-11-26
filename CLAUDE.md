@@ -21,7 +21,7 @@ file is worth a second look before it is written.
 | --- | --- |
 | `Dockerfile` | The image: Node base per the rule below, pinned npm install, non-root `node` user, auto-updater off, no `VOLUME` |
 | `.github/workflows/auto_update_pull_request_branches.yml` | Rebase every open, non-draft, conflict-free pull request that is behind `main` and was not opened by Dependabot, once `main` has been quiet for an hour after a push, falling back to a merge commit, and comment once on each one that conflicts. Best effort, and it needs a credential of its own: its header says which, and why the default token will not do |
-| `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when that version is not already there |
+| `.github/workflows/build-and-publish.yml` | Resolve the version from npm, build, run the image once to prove it runs, publish only when the version, the base digest or the `Dockerfile` differs from what the published image records |
 | `.github/workflows/dependabot-auto-merge.yml` | Queue Dependabot's minor and patch updates with `gh pr merge --auto`, never merge them directly |
 | `.github/rulesets/main.json` | The live ruleset that protects `main`, its required checks included, in the form GitHub's "Import a ruleset" takes |
 | `.github/check-ruleset.sh`, `.github/workflows/ruleset.yml` | Fail a pull request whose ruleset names a check no job reports |

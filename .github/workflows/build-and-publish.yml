@@ -5,18 +5,21 @@ name: Build and publish
 
 # Three ways in, and only two of them ever touch the registry.
 #
-# TWO THINGS make the published image stale, and the schedule below exists for
-# both. A new Claude Code release is the obvious one. The other is the base: FROM
-# names a floating tag, so Debian's and Node's security fixes land on
+# THREE THINGS make the published image stale, and the schedule below exists for
+# all of them. A new Claude Code release is the obvious one. The second is the
+# base: FROM names a floating tag, so Debian's and Node's security fixes land on
 # the base without a line of this repository changing, and an image built
 # before them keeps shipping what they fixed. Rebuilding only when the npm
 # version moves would leave that entirely to the CLI's release cadence -- quiet
-# fortnight, fortnight-old base -- which is not a property anybody chose.
+# fortnight, fortnight-old base -- which is not a property anybody chose. The
+# third is the recipe itself: a Dockerfile change merged to main, a package
+# added say, moves neither of the other two, and would otherwise wait for one
+# of them before anybody could pull it.
 #
-# So the run compares two things against what is published and rebuilds if
-# either moved. It can tell, because the publishing build records the version
-# and the base digest on the image as OCI labels ; that is the whole reason they
-# are written.
+# So the run compares three things against what is published and rebuilds if
+# any moved. It can tell, because the publishing build records the version, the
+# base digest and the Dockerfile's digest on the image as labels ; that is the
+# whole reason they are written.
 #
 # On a pull request the job resolves the version, builds and runs the image, then
 # stops: no login, no push. Without that, nothing in this repository would check
@@ -136,6 +139,17 @@ jobs:
           # this it is removed right after the fetch and none inherits it
           persist-credentials: false
 
+      # The recipe is the Dockerfile and nothing else: no file of this tree is
+      # copied into the image, so its digest says whether what is published was
+      # built from what this checkout holds.
+      - name: Record the digest of the Dockerfile
+        id: recipe
+        run: |
+          set -euo pipefail
+          digest="sha256:$(sha256sum Dockerfile | cut -d ' ' -f 1)"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "The Dockerfile's digest is ${digest}."
+
       # The digest has to be resolved BEFORE the build, because a label is baked
       # into the image config at build time and cannot be added afterwards
       # without building again.
@@ -242,6 +256,7 @@ jobs:
           DIST_TAG: ${{ steps.resolve.outputs.dist_tag }}
           MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          RECIPE_DIGEST: ${{ steps.recipe.outputs.digest }}
           FORCE: ${{ inputs.force }}
           EVENT: ${{ github.event_name }}
         run: |
@@ -281,11 +296,13 @@ jobs:
             }
             published_version="$(label org.opencontainers.image.version)"
             published_base="$(label org.opencontainers.image.base.digest)"
+            published_recipe="$(label io.github.dragnix-tigerblue77.claude-code.recipe-digest)"
           elif grep -qiE 'not found|manifest unknown|name unknown' "$errors"; then
             # Nothing published under that tag yet, so there is nothing to
             # compare against and everything to build
             published_version=""
             published_base=""
+            published_recipe=""
           else
             # Credentials, rate limit, registry outage: none of these is an
             # answer to "did anything move ?", and guessing here is what would
@@ -315,7 +332,14 @@ jobs:
             decided true false "Same version ${VERSION}, but the base moved from ${published_base:-nothing recorded} to ${BASE_DIGEST}. Rebuilding ${MOVING_TAG} only."
           fi
 
-          decided false false "${IMAGE}:${MOVING_TAG} is on ${VERSION} and on the current base. Nothing to do."
+          if [ "$published_recipe" != "$RECIPE_DIGEST" ]; then
+            # The same version with other bytes, as for the base: only the
+            # moving tag moves. An image published before this label existed
+            # records nothing, which reads as a change and is rebuilt once
+            decided true false "Same version ${VERSION} and base, but the Dockerfile changed from ${published_recipe:-nothing recorded} to ${RECIPE_DIGEST}. Rebuilding ${MOVING_TAG} only."
+          fi
+
+          decided false false "${IMAGE}:${MOVING_TAG} is on ${VERSION}, on the current base and built from this Dockerfile. Nothing to do."
 
       # The labels are the OCI pre-defined annotation keys, and they are not
       # decoration. Three of them do work nothing else does:
@@ -332,6 +356,9 @@ jobs:
       #
       # "version" says which Claude Code is inside, readable with docker
       # inspect and without pulling the whole image.
+      #
+      # "recipe-digest", this repository's own, records the Dockerfile the image
+      # was built from, which the decision above compares with this checkout's.
       - name: Build
         if: steps.decide.outputs.build == 'true'
         env:
@@ -341,6 +368,7 @@ jobs:
           MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_NAME: ${{ steps.base.outputs.name }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          RECIPE_DIGEST: ${{ steps.recipe.outputs.digest }}
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
           REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -359,6 +387,7 @@ jobs:
             --label "org.opencontainers.image.base.name=${BASE_NAME}" \
             --label "org.opencontainers.image.base.digest=${BASE_DIGEST}" \
             --label "io.github.dragnix-tigerblue77.claude-code.npm-dist-tag=${DIST_TAG}" \
+            --label "io.github.dragnix-tigerblue77.claude-code.recipe-digest=${RECIPE_DIGEST}" \
             --tag "${IMAGE}:${VERSION}" \
             --tag "${IMAGE}:${MOVING_TAG}" \
             .
@@ -401,6 +430,7 @@ jobs:
           IMAGE: ${{ steps.resolve.outputs.image }}
           VERSION: ${{ steps.resolve.outputs.version }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          RECIPE_DIGEST: ${{ steps.recipe.outputs.digest }}
         run: |
           set -euo pipefail
 
@@ -417,7 +447,8 @@ jobs:
             org.opencontainers.image.revision \
             org.opencontainers.image.base.name \
             org.opencontainers.image.base.digest \
-            io.github.dragnix-tigerblue77.claude-code.npm-dist-tag
+            io.github.dragnix-tigerblue77.claude-code.npm-dist-tag \
+            io.github.dragnix-tigerblue77.claude-code.recipe-digest
           do
             value="$(label "$key")"
             if [ -z "$value" ] || [ "$value" = "<no value>" ]; then
@@ -436,6 +467,14 @@ jobs:
           recorded="$(label org.opencontainers.image.base.digest)"
           if [ "$recorded" != "$BASE_DIGEST" ]; then
             echo "::error::the image records base digest ${recorded}, this run resolved ${BASE_DIGEST}" >&2
+            failed=true
+          fi
+
+          # The same for the Dockerfile's digest, the third value a refresh is
+          # decided on
+          recorded="$(label io.github.dragnix-tigerblue77.claude-code.recipe-digest)"
+          if [ "$recorded" != "$RECIPE_DIGEST" ]; then
+            echo "::error::the image records Dockerfile digest ${recorded}, this run computed ${RECIPE_DIGEST}" >&2
             failed=true
           fi
 
@@ -471,6 +510,7 @@ jobs:
           MOVING_TAG: ${{ steps.resolve.outputs.moving_tag }}
           BASE_NAME: ${{ steps.base.outputs.name }}
           BASE_DIGEST: ${{ steps.base.outputs.digest }}
+          RECIPE_DIGEST: ${{ steps.recipe.outputs.digest }}
           BUILT: ${{ steps.decide.outputs.build }}
           PUSH_VERSION: ${{ steps.decide.outputs.push_version }}
           REASON: ${{ steps.decide.outputs.reason }}
@@ -486,12 +526,13 @@ jobs:
             echo "| version resolved | \`${VERSION:-unresolved}\` |"
             echo "| base image | \`${BASE_NAME:-unresolved}\` |"
             echo "| base digest | \`${BASE_DIGEST:-unresolved}\` |"
+            echo "| Dockerfile digest | \`${RECIPE_DIGEST:-unresolved}\` |"
             if [ "${EVENT}" = "pull_request" ]; then
               echo "| result | built and ran, not published (pull request) |"
             elif [ "${BUILT}" = "true" ] && [ "${PUSH_VERSION}" = "true" ]; then
               echo "| result | published \`${IMAGE}:${VERSION}\` and \`${IMAGE}:${MOVING_TAG}\` |"
             elif [ "${BUILT}" = "true" ]; then
-              echo "| result | republished \`${IMAGE}:${MOVING_TAG}\` on the current base, leaving \`${IMAGE}:${VERSION}\` untouched |"
+              echo "| result | republished \`${IMAGE}:${MOVING_TAG}\` on the current base and Dockerfile, leaving \`${IMAGE}:${VERSION}\` untouched |"
             else
               echo "| result | nothing to do |"
             fi
